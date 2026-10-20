@@ -1,0 +1,156 @@
+{
+  "name": "ai-activity-visualizer",
+  "displayName": "AI Activity Visualizer",
+  "description": "Visualizes live and historical AI coding agent activity (Copilot, Antigravity, workspace) with glowing constellation graph and real-time agent traces.",
+  "version": "1.0.0",
+  "publisher": "kurados",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kurados/ai-activity-visualizer"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization",
+    "Machine Learning"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ai-activity-visualizer",
+          "title": "Agent Brain",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "ai-activity-visualizer": [
+        {
+          "type": "webview",
+          "id": "aiActivityVisualizer.controlView",
+          "name": "Server & Controls"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "aiActivityVisualizer.openDashboard",
+        "title": "Agent Brain: Open Activity Dashboard",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.startRecording",
+        "title": "Agent Brain: Start Recording",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.stopRecording",
+        "title": "Agent Brain: Stop Recording",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.clearSession",
+        "title": "Agent Brain: Clear Current Session",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.exportSession",
+        "title": "Agent Brain: Export Current Session",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.configureCopilot",
+        "title": "Agent Brain: Configure Copilot Integration",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.configureAntigravity",
+        "title": "Agent Brain: Configure Antigravity Integration",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.showDiagnostics",
+        "title": "Agent Brain: Show Diagnostics & Logs",
+        "category": "AI Activity Visualizer"
+      }
+    ],
+    "configuration": {
+      "title": "AI Activity Visualizer",
+      "properties": {
+        "aiActivityVisualizer.recordingEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to record workspace and agent activity automatically on startup."
+        },
+        "aiActivityVisualizer.retentionDays": {
+          "type": "number",
+          "default": 30,
+          "description": "Maximum number of days to retain activity history in SQLite database."
+        },
+        "aiActivityVisualizer.maxEventsPerSession": {
+          "type": "number",
+          "default": 20000,
+          "description": "Maximum number of events stored per session."
+        },
+        "aiActivityVisualizer.httpReceiverPort": {
+          "type": "number",
+          "default": 5174,
+          "description": "Loopback port for local event receiver."
+        },
+        "aiActivityVisualizer.excludedPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/*.secret",
+            "**/.env*",
+            "**/id_rsa*",
+            "**/*.pem",
+            "**/*.key"
+          ],
+          "description": "Glob patterns of files and directories excluded from monitoring and graph nodes."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "compile": "tsc -p ./ --noEmit",
+    "build:extension": "node esbuild.config.mjs",
+    "build:webview": "node esbuild.webview.mjs",
+    "build": "node esbuild.config.mjs && node esbuild.webview.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "test": "vitest run",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "sql.js": "^1.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/sql.js": "^1.4.9",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.21.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.5.3",
+    "vitest": "^1.6.0"
+  }
+}
