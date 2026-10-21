@@ -63,17 +63,56 @@ AI Activity Visualizer provides comprehensive runtime visibility into autonomous
 
 ---
 
-## Quick Start
+## Quick Start and Automated PC Deployment
 
-### Installation
+The system is fully portable and self-contained across Windows, macOS, and Linux. It utilizes WebAssembly SQLite (`sql.js`), Node.js, and standard HTML5 Canvas, eliminating native compilation dependencies (such as node-gyp or Python build toolchains).
 
-Install via the Visual Studio Code Extensions view or command line:
+To deploy and run on any new machine, clone or copy the project folder and use the platform-specific automated installer.
 
-```bash
-code --install-extension ai-activity-visualizer-1.0.0.vsix
+### Automated Turnkey Setup (Recommended)
+
+The automated setup scripts verify Node.js (>= 18) and npm, install project dependencies, compile TypeScript, build production bundles, package the `.vsix` extension, and automatically install the extension into Visual Studio Code if the `code` CLI is available on PATH.
+
+#### Windows (Command Prompt)
+```cmd
+setup.bat
 ```
 
-To run in development mode, clone the repository, open in Visual Studio Code, and launch the extension development host (`F5`).
+#### Windows (PowerShell)
+```powershell
+powershell -ExecutionPolicy Bypass -File setup.ps1
+```
+
+#### macOS and Linux
+```bash
+chmod +x setup.sh start.sh
+./setup.sh
+```
+
+#### Universal (Any OS with Node.js)
+```bash
+npm run setup
+```
+
+---
+
+### Launching the Visualizer
+
+#### Web Dashboard & Live Bridge Mode
+Start the live bridge server and automatically open the interactive 3D observatory in your default browser at `http://127.0.0.1:5175/`:
+
+- **Windows Command Prompt:** `start.bat`
+- **Windows PowerShell:** `powershell -ExecutionPolicy Bypass -File start.ps1`
+- **macOS / Linux:** `./start.sh`
+- **Universal:** `npm start`
+
+#### Visual Studio Code Extension Mode
+If installed into Visual Studio Code:
+1. Open Visual Studio Code in any workspace.
+2. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
+3. Execute `Agent Brain: Open Activity Dashboard`.
+
+---
 
 ### Extension Commands
 
@@ -104,18 +143,18 @@ The extension can be customized through Visual Studio Code settings under `aiAct
 
 ---
 
-## Building and Testing
+## Manual Building and Testing
 
-Prerequisites: Node.js (v18 or higher) and npm.
+Prerequisites: Node.js (version 18 or higher) and npm.
 
 ```bash
-# Install dependencies
+# Clean dependency installation
 npm install
 
-# Run static type checks
+# TypeScript compilation check
 npm run compile
 
-# Execute unit and integration tests
+# Unit and integration test suite (Vitest)
 npm test
 
 # Build production bundles (extension and webview)
@@ -123,19 +162,19 @@ npm run build
 
 # Package installable VSIX package
 npm run package
+
+# Run live bridge server independently
+npm start
 ```
 
 ---
 
-## Repository and Live Bridge Server
+## Cross-Platform Deployment Architecture
 
-To run the live backend bridge server independently:
-
-```bash
-node live_bridge_server.mjs
-```
-
-The bridge server will detect active Antigravity conversations, tail transcript logs in real time, and serve the dashboard locally at `http://127.0.0.1:5175/`.
+The application is structured to ensure zero-friction transfer across different machines:
+- **No Native Addons:** Database persistence is powered by `sql.js` (SQLite compiled to WebAssembly), avoiding prebuilt C++ binaries or architecture-specific compilation errors on ARM64 / x64.
+- **Pure Web Standards:** The 3D neural observatory runs entirely on HTML5 Canvas 2D with a lightweight 3D orbital projection engine, requiring no WebGL hardware extensions or proprietary drivers.
+- **Self-Contained Bridge:** `live_bridge_server.mjs` operates using standard Node.js built-ins (`http`, `fs`, `path`, `os`) and zero external server dependencies, running out-of-the-box on Windows, Linux, and macOS.
 
 ---
 

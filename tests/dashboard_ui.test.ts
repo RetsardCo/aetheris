@@ -220,5 +220,81 @@ describe('Agent Brain 3D Dashboard & UI Verification', () => {
     expect(content).toContain('#rightTraceStack {');
     expect(content).toContain('height: calc(100vh - 124px);');
   });
+
+  it('removes central coreLabel watermark completely from dashboard', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).not.toContain('id="coreLabel"');
+    expect(content).not.toContain('AETHERIS CORE');
+    expect(content).not.toContain('SYNAPSE ACTIVE // 360° ORBIT');
+  });
+
+  it('implements reversed natural camera drag rotation controls', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('camera.yaw -= dx * 0.007');
+    expect(content).toContain('camera.pitch + dy * 0.007');
+  });
+
+  it('provides turnkey automated installation and launch scripts for Windows, macOS, and Linux', () => {
+    const rootDir = path.resolve(__dirname, '..');
+    const scripts = [
+      'setup.bat',
+      'setup.ps1',
+      'setup.sh',
+      'start.bat',
+      'start.ps1',
+      'start.sh',
+      'scripts/setup.mjs'
+    ];
+
+    for (const relPath of scripts) {
+      const fullPath = path.join(rootDir, relPath);
+      expect(fs.existsSync(fullPath), `Expected ${relPath} to exist`).toBe(true);
+      const content = fs.readFileSync(fullPath, 'utf-8');
+      expect(content.length).toBeGreaterThan(50);
+    }
+
+    // Verify setup scripts contain Node >= 18 check and vsix packaging
+    const setupBat = fs.readFileSync(path.join(rootDir, 'setup.bat'), 'utf-8');
+    expect(setupBat).toContain('NODE_MAJOR');
+    expect(setupBat).toContain('npm run package');
+    expect(setupBat).toContain('--install-extension');
+
+    const setupPs1 = fs.readFileSync(path.join(rootDir, 'setup.ps1'), 'utf-8');
+    expect(setupPs1).toContain('$nodeMajor');
+    expect(setupPs1).toContain('npm run package');
+    expect(setupPs1).toContain('--install-extension');
+
+    const setupSh = fs.readFileSync(path.join(rootDir, 'setup.sh'), 'utf-8');
+    expect(setupSh).toContain('NODE_MAJOR');
+    expect(setupSh).toContain('npm run package');
+    expect(setupSh).toContain('--install-extension');
+
+    const setupMjs = fs.readFileSync(path.join(rootDir, 'scripts/setup.mjs'), 'utf-8');
+    expect(setupMjs).toContain('process.versions.node');
+    expect(setupMjs).toContain('npm run package');
+  });
+
+  it('configures setup and start scripts in package.json', () => {
+    const pkgPath = path.resolve(__dirname, '../package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    expect(pkg.scripts.setup).toBeDefined();
+    expect(pkg.scripts.start).toBeDefined();
+    expect(pkg.scripts.setup).toContain('setup.mjs');
+    expect(pkg.scripts.start).toContain('live_bridge_server.mjs');
+  });
+
+  it('contains zero emojis and comprehensive cross-platform deployment instructions in README.md', () => {
+    const readmePath = path.resolve(__dirname, '../README.md');
+    const content = fs.readFileSync(readmePath, 'utf-8');
+    const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+    expect(content.match(emojiRegex)).toBeNull();
+    expect(content).toContain('Quick Start and Automated PC Deployment');
+    expect(content).toContain('setup.bat');
+    expect(content).toContain('setup.ps1');
+    expect(content).toContain('setup.sh');
+    expect(content).toContain('start.bat');
+    expect(content).toContain('npm run setup');
+    expect(content).toContain('npm start');
+  });
 });
 

@@ -425,14 +425,6 @@
       </div>
     </div>
 
-    <!-- Central Hologram Core Label (Fades gracefully when camera tilts) -->
-    <div class="flex justify-center items-center pointer-events-none my-auto">
-      <div class="text-center opacity-85 transition-opacity duration-300" id="coreLabel">
-        <div id="coreTitle" class="text-[12px] tracking-[0.25em] uppercase font-black text-cyan-300 glow-cyan mono">AETHERIS CORE</div>
-        <div id="coreSubtitle" class="text-[9px] text-amber-400/90 mono mt-0.5 tracking-wider font-semibold">SYNAPSE ACTIVE // 360° ORBIT</div>
-      </div>
-    </div>
-
     <!-- Quick Drag & Zoom Hint Overlay (Bottom Right, Unobtrusive) -->
     <div class="flex justify-end items-end pointer-events-none mb-14 mr-2">
       <div class="apple-glass px-2.5 py-1 rounded text-[10px] text-slate-400 mono">
@@ -1049,9 +1041,9 @@
       if (isOrbiting) {
         const dx = e.clientX - lastMouseX;
         const dy = e.clientY - lastMouseY;
-        camera.yaw += dx * 0.007;
+        camera.yaw -= dx * 0.007;
         camera.yaw = (camera.yaw % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-        camera.pitch = Math.max(-1.50, Math.min(1.50, camera.pitch - dy * 0.007));
+        camera.pitch = Math.max(-1.50, Math.min(1.50, camera.pitch + dy * 0.007));
         camera.targetYaw = camera.yaw;
         camera.targetPitch = camera.pitch;
         lastMouseX = e.clientX;
@@ -1118,9 +1110,9 @@
       if (isOrbiting && e.touches.length === 1) {
         const dx = e.touches[0].clientX - lastMouseX;
         const dy = e.touches[0].clientY - lastMouseY;
-        camera.yaw += dx * 0.007;
+        camera.yaw -= dx * 0.007;
         camera.yaw = (camera.yaw % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-        camera.pitch = Math.max(-1.50, Math.min(1.50, camera.pitch - dy * 0.007));
+        camera.pitch = Math.max(-1.50, Math.min(1.50, camera.pitch + dy * 0.007));
         camera.targetYaw = camera.yaw;
         camera.targetPitch = camera.pitch;
         lastMouseX = e.touches[0].clientX;
@@ -1461,12 +1453,6 @@
       const yawStep = Math.max(-maxAngularStep, Math.min(maxAngularStep, deltaYaw * 0.10));
       camera.yaw += yawStep;
       camera.yaw = (camera.yaw % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-
-      // Core label fades when following a node so the focused node in center has unobstructed view
-      const coreLabelEl = document.getElementById('coreLabel');
-      if (coreLabelEl) {
-        coreLabelEl.style.opacity = trackingNode ? '0' : '0.85';
-      }
 
       // Pitch interpolation (clamped between -1.48 and 1.48 radians)
       camera.targetPitch = Math.max(-1.48, Math.min(1.48, camera.targetPitch));

@@ -172,7 +172,9 @@
     "build": "node esbuild.config.mjs && node esbuild.webview.mjs",
     "watch": "node esbuild.config.mjs --watch",
     "test": "vitest run",
-    "package": "vsce package --no-dependencies"
+    "package": "vsce package --no-dependencies",
+    "setup": "node ./scripts/setup.mjs",
+    "start": "node live_bridge_server.mjs --open"
   },
   "dependencies": {
     "sql.js": "^1.12.0",

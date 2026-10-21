@@ -1025,6 +1025,20 @@ function tryListen(portIndex) {
     console.log(`📊 State Snapshot: http://${HOST}:${activePort}/api/state`);
     console.log(`🟢 Active Conversation: ${state.activeConversation}`);
     console.log(`======================================================\n`);
+
+    if (process.argv.includes('--open')) {
+      const url = `http://${HOST}:${activePort}/`;
+      import('child_process').then(({ exec }) => {
+        const cmd = process.platform === 'win32'
+          ? `start "" "${url}"`
+          : process.platform === 'darwin'
+          ? `open "${url}"`
+          : `xdg-open "${url}"`;
+        exec(cmd, (err) => {
+          if (err) console.warn(`[Agent Brain Bridge] Could not open browser automatically: ${err.message}`);
+        });
+      }).catch(() => {});
+    }
   });
 }
 
