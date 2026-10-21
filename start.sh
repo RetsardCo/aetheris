@@ -1,17 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
+cd "$(dirname "$0")"
+
 echo "======================================================"
 echo "   Starting AI Activity Visualizer Live Bridge Server"
 echo "======================================================"
+echo "Launching live bridge server and opening dashboard in default browser..."
 
-URL="http://127.0.0.1:5175/"
-echo "Opening dashboard at $URL in default browser..."
-
-if command -v open >/dev/null 2>&1; then
-    open "$URL" &
-elif command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$URL" &
-fi
-
-node live_bridge_server.mjs
+node live_bridge_server.mjs --open

@@ -2,6 +2,7 @@
 # Run with: powershell -ExecutionPolicy Bypass -File setup.ps1
 
 $ErrorActionPreference = "Stop"
+Set-Location -LiteralPath $PSScriptRoot
 
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "   AI Activity Visualizer - Automated Setup (PowerShell)" -ForegroundColor Cyan

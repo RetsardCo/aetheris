@@ -1,5 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
+cd /d "%~dp0"
 
 echo ======================================================
 echo    AI Activity Visualizer - Automated Setup (Windows)

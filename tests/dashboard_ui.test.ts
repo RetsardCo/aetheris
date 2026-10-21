@@ -253,25 +253,43 @@ describe('Agent Brain 3D Dashboard & UI Verification', () => {
       expect(content.length).toBeGreaterThan(50);
     }
 
-    // Verify setup scripts contain Node >= 18 check and vsix packaging
+    // Verify setup scripts contain Node >= 18 check, directory resolution, and vsix packaging
     const setupBat = fs.readFileSync(path.join(rootDir, 'setup.bat'), 'utf-8');
     expect(setupBat).toContain('NODE_MAJOR');
+    expect(setupBat).toContain('%~dp0');
     expect(setupBat).toContain('npm run package');
     expect(setupBat).toContain('--install-extension');
 
     const setupPs1 = fs.readFileSync(path.join(rootDir, 'setup.ps1'), 'utf-8');
     expect(setupPs1).toContain('$nodeMajor');
+    expect(setupPs1).toContain('$PSScriptRoot');
     expect(setupPs1).toContain('npm run package');
     expect(setupPs1).toContain('--install-extension');
 
     const setupSh = fs.readFileSync(path.join(rootDir, 'setup.sh'), 'utf-8');
     expect(setupSh).toContain('NODE_MAJOR');
+    expect(setupSh).toContain('dirname');
     expect(setupSh).toContain('npm run package');
     expect(setupSh).toContain('--install-extension');
+    expect(setupSh).not.toContain('\r\n');
 
     const setupMjs = fs.readFileSync(path.join(rootDir, 'scripts/setup.mjs'), 'utf-8');
     expect(setupMjs).toContain('process.versions.node');
     expect(setupMjs).toContain('npm run package');
+
+    // Verify start scripts invoke live_bridge_server with --open
+    const startBat = fs.readFileSync(path.join(rootDir, 'start.bat'), 'utf-8');
+    expect(startBat).toContain('live_bridge_server.mjs --open');
+    expect(startBat).toContain('%~dp0');
+
+    const startPs1 = fs.readFileSync(path.join(rootDir, 'start.ps1'), 'utf-8');
+    expect(startPs1).toContain('live_bridge_server.mjs --open');
+    expect(startPs1).toContain('$PSScriptRoot');
+
+    const startSh = fs.readFileSync(path.join(rootDir, 'start.sh'), 'utf-8');
+    expect(startSh).toContain('live_bridge_server.mjs --open');
+    expect(startSh).toContain('dirname');
+    expect(startSh).not.toContain('\r\n');
   });
 
   it('configures setup and start scripts in package.json', () => {

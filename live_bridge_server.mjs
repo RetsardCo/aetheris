@@ -1007,16 +1007,9 @@ function tryListen(portIndex) {
   }
 
   const port = PREFERRED_PORTS[portIndex];
-  server.once('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.warn(`[Agent Brain Bridge] Port ${port} is currently in use, trying next port...`);
-      tryListen(portIndex + 1);
-    } else {
-      console.error(`[Agent Brain Bridge] Server error:`, err);
-    }
-  });
 
-  server.listen(port, HOST, () => {
+  const onListening = () => {
+    server.removeListener('error', onError);
     activePort = port;
     console.log(`\n======================================================`);
     console.log(`🚀 AGENT BRAIN LIVE BRIDGE ACTIVE`);
@@ -1039,7 +1032,21 @@ function tryListen(portIndex) {
         });
       }).catch(() => {});
     }
-  });
+  };
+
+  const onError = (err) => {
+    server.removeListener('listening', onListening);
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`[Agent Brain Bridge] Port ${port} is currently in use, trying next port...`);
+      tryListen(portIndex + 1);
+    } else {
+      console.error(`[Agent Brain Bridge] Server error:`, err);
+    }
+  };
+
+  server.once('listening', onListening);
+  server.once('error', onError);
+  server.listen(port, HOST);
 }
 
 tryListen(0);
