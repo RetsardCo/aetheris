@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kurados/ai-activity-visualizer"
+    "url": "https://github.com/RetsardCo/ai-activity-visualizer"
   },
   "engines": {
     "vscode": "^1.90.0"
@@ -57,6 +57,16 @@
         "category": "AI Activity Visualizer"
       },
       {
+        "command": "aiActivityVisualizer.pauseRecording",
+        "title": "Agent Brain: Pause Recording",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.resumeRecording",
+        "title": "Agent Brain: Resume Recording",
+        "category": "AI Activity Visualizer"
+      },
+      {
         "command": "aiActivityVisualizer.clearSession",
         "title": "Agent Brain: Clear Current Session",
         "category": "AI Activity Visualizer"
@@ -74,6 +84,16 @@
       {
         "command": "aiActivityVisualizer.configureAntigravity",
         "title": "Agent Brain: Configure Antigravity Integration",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.validateIntegrations",
+        "title": "Agent Brain: Validate Integrations",
+        "category": "AI Activity Visualizer"
+      },
+      {
+        "command": "aiActivityVisualizer.openPrivacySettings",
+        "title": "Agent Brain: Open Privacy Settings",
         "category": "AI Activity Visualizer"
       },
       {
@@ -99,6 +119,24 @@
           "type": "number",
           "default": 20000,
           "description": "Maximum number of events stored per session."
+        },
+        "aiActivityVisualizer.graphNodeLimit": {
+          "type": "number",
+          "default": 1000,
+          "description": "Maximum number of file nodes rendered in constellation graph."
+        },
+        "aiActivityVisualizer.enableContentCapture": {
+          "type": "boolean",
+          "default": false,
+          "description": "Explicit opt-in to capture limited source code diff snippets."
+        },
+        "aiActivityVisualizer.enabledAdapters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["vscode", "copilot", "antigravity", "http"],
+          "description": "List of enabled agent and workspace ingestion adapters."
         },
         "aiActivityVisualizer.httpReceiverPort": {
           "type": "number",

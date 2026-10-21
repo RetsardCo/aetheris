@@ -1,100 +1,144 @@
-# AI Activity Visualizer (Agent Brain) for VS Code
+# AI Activity Visualizer (Agent Brain) for Visual Studio Code
 
 [![Visual Studio Marketplace](https://img.shields.io/badge/VS%20Code-AI%20Activity%20Visualizer-blue.svg)](https://marketplace.visualstudio.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/Tests-Passing-emerald.svg)](#building--testing)
+[![Tests: Passing](https://img.shields.io/badge/Tests-Passing-emerald.svg)](#building-and-testing)
 
-> **"Your repo, thinking out loud."**  
-> Real-time developer observability tool for tracking, normalising, storing, and visualizing AI coding agent activity (GitHub Copilot, Google Antigravity, VS Code workspace edits) as an interactive glowing constellation map.
-
----
-
-## 🌟 Key Features
-
-1. **Agent Brain Constellation Graph**
-   - High-performance 60fps Canvas 2D engine.
-   - Central 3D rotating diamond/octahedron wireframe core with horizontal scanline.
-   - Glowing file and folder nodes with activity pulse rings (Cyan for reads, Amber for writes, Green for creations, Red for deletions).
-   - Real dependency edges derived from static import parsing (JavaScript, TypeScript, Python, etc.)—**never fabricated**.
-   - Swooping orbital comet particles and background cosmic dust.
-   - Smooth pan, zoom, click navigation, search highlighting, and "Only what needs attention" filter.
-
-2. **Floating Agent Trace & Code Panels**
-   - Floating dark cards with macOS-style `● ● ●` window controls and syntax-highlighted snippets.
-   - Real-time floating bottom terminal log tracking agent actions (`cd`, `open`, `Read`, `Follow`, `hop`).
-   - Direct click-to-open integration with the VS Code editor.
-
-3. **4-in-1 Comprehensive Dashboard**
-   - **Interactive Graph**: The primary constellation view.
-   - **Live Overview**: Event volume, touched files, provider distributions, and integration health.
-   - **Chronological Timeline**: Searchable, filterable event stream with expandable sanitized metadata and code snippets.
-   - **Persistent Session Replay**: Playback recorded agent activity at variable speeds (0.5x, 1x, 2x, 5x) with scrubber and export capabilities.
-
-4. **Multi-Agent Adapters**
-   - **VS Code Workspace Adapter**: Captures document changes, file creates, deletes, renames, and editor focus with `observed` evidence attribution.
-   - **GitHub Copilot Telemetry Adapter**: Ingests tool calls (`read_file`, `grep_search`, `run_in_terminal`, `edit_file`) with `explicit` agent attribution.
-   - **Google Antigravity Hook Adapter**: Ingests lifecycle events (`PreToolUse`, `PostToolUse`, `PreInvocation`, `PostInvocation`, `Stop`).
-   - **Generic Loopback HTTP Ingester**: Secure `127.0.0.1:5174` listener with cryptographically generated per-session bearer tokens.
-
-5. **Robust Local-First Persistence & Privacy**
-   - Embedded SQLite engine via WebAssembly (`sql.js`), zero native compilation dependencies.
-   - Automated secret-pattern redaction for OpenAI, Google, GitHub, AWS, and generic tokens.
-   - Configurable retention policy (default 30 days) and automated pruning.
-   - Zero external telemetry or cloud dependencies.
+A real-time developer observability suite and 3D neural observatory for monitoring, normalizing, storing, and visualizing AI coding agent activity (Google Antigravity, GitHub Copilot, and Visual Studio Code workspace edits) as an interactive spherical constellation mesh.
 
 ---
 
-## 🚀 Quick Start
+## Architecture and Overview
+
+AI Activity Visualizer provides comprehensive runtime visibility into autonomous AI agent actions. When agents read documentation, inspect codebase graphs, issue terminal executions, or edit source files, every event is ingested through low-latency telemetry adapters, sanitized for privacy, persisted in an embedded SQLite database, and projected across a high-performance 60 FPS Canvas 2D engine.
+
+### 3D Neural Observatory (Aetheris Engine)
+
+1. Full Viewport Background Observable Space:
+   - The 3D constellation engine renders across the entire viewport background, allowing unrestricted zooming and 360-degree orbital exploration.
+   - All HUD controls and telemetry modules float as frosted glass overlay panels using Apple, macOS, and iOS design guidelines (20px blur, 180% saturation, translucent dark tint, subtle borders, and layered depth).
+
+2. Continuous Camera Node Follow (3D Focus Tracking):
+   - When a file node is focused in 3D, the camera target LookAt coordinates continuously track the node's position as it moves or as the galaxy orbits.
+   - The camera centers and orbits directly around the selected node rather than being pinned to the scene origin.
+   - A dedicated return control allows one-click unbinding and smooth return to scene center.
+
+3. Shortest-Path Angular Velocity Stabilization:
+   - Camera rotation employs shortest-path angular delta wrapping `((targetYaw - yaw) % (2 * PI))` normalized within `[-PI, PI]`.
+   - Eliminates rapid spinning artifacts during spotlight search or manual focus transitions while auto-orbit is toggled.
+
+4. Side-Docked Live Agent Trace:
+   - Positioned neatly at the bottom-left edge without obstructing central constellation nodes.
+   - Features real-time log streaming with granular filters (All, Write, Read, Exec, Think) and one-click node spotlighting.
+
+5. AI Cognition Stream and Multi-Project Reasoning:
+   - Bottom-docked reasoning drawer supporting multi-project workspaces.
+   - Real-time Markdown rendering for AI reasoning steps, duration tracking badges, and synchronized cause-and-effect timelines linking thoughts directly to produced file actions.
+
+---
+
+## Core Features
+
+1. Constellation Graph and Cluster Hulls
+   - Hardware-accelerated 60 FPS perspective projection engine with depth-sorted painter's rendering.
+   - Spherical cluster hulls with polyhedral geometric wireframes and orbital latitude rings.
+   - Luminous dependency edges derived from static import parsing with travelling signal energy packets.
+   - Procedural WebAudio synthesizer delivering distinct sonic feedback for read, write, create, shockwave, and thinking events.
+
+2. Code Trace Live Stack
+   - High-fidelity frosted cards displaying recent file modifications and code diffs with syntax highlighting.
+   - Non-cutting flex layout with independent vertical scrolling.
+   - Instant click-to-focus linking directly into the 3D graph and editor.
+
+3. Multi-Agent Adapters
+   - Google Antigravity Adapter: Tails live transcript JSONL streams, parsing reasoning thoughts, tool calls, and lifecycle hooks.
+   - GitHub Copilot Adapter: Ingests telemetry tool calls (read_file, grep_search, run_in_terminal, edit_file).
+   - Visual Studio Code Workspace Adapter: Tracks document modifications, directory creations, deletions, and focus changes.
+   - Loopback HTTP Bridge: Secure local listener on port 5174/5175 with Server-Sent Events (SSE) broadcasting.
+
+4. Privacy and Persistence
+   - Embedded SQLite WebAssembly database (`sql.js`) requiring zero external server dependencies.
+   - Automated secret sanitization for API keys, bearer tokens, AWS credentials, and environment secrets.
+   - Configurable retention policies with automated pruning.
+
+---
+
+## Quick Start
 
 ### Installation
 
-1. Install the `.vsix` package:
-   ```bash
-   code --install-extension ai-activity-visualizer-1.0.0.vsix
-   ```
-2. Or open the project in VS Code and press `F5` to launch an Extension Development Host.
+Install via the Visual Studio Code Extensions view or command line:
 
-### Commands
+```bash
+code --install-extension ai-activity-visualizer-1.0.0.vsix
+```
 
-Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and type:
-- `Agent Brain: Open Activity Dashboard` — Launches the main visualizer.
-- `Agent Brain: Start Recording` — Resumes event collection.
-- `Agent Brain: Stop Recording` — Pauses event collection.
-- `Agent Brain: Clear Current Session` — Clears events for the active session.
-- `Agent Brain: Export Current Session` — Exports session events as sanitized JSON.
-- `Agent Brain: Show Diagnostics & Logs` — Opens the diagnostics output channel.
+To run in development mode, clone the repository, open in Visual Studio Code, and launch the extension development host (`F5`).
+
+### Extension Commands
+
+Access via the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
+
+- `Agent Brain: Open Activity Dashboard` - Opens the primary 3D neural visualizer.
+- `Agent Brain: Start Recording` - Resumes background telemetry capture.
+- `Agent Brain: Stop Recording` - Pauses background telemetry capture.
+- `Agent Brain: Clear Current Session` - Resets stored events for the active session.
+- `Agent Brain: Export Current Session` - Exports session telemetry as sanitized JSON.
+- `Agent Brain: Show Diagnostics & Logs` - Opens the diagnostic output channel.
 
 ---
 
-## ⚙️ Configuration
+## Configuration Settings
 
-Settings available under `aiActivityVisualizer`:
+The extension can be customized through Visual Studio Code settings under `aiActivityVisualizer`:
 
-| Key | Default | Description |
+| Setting | Default | Description |
 |---|---|---|
-| `aiActivityVisualizer.recordingEnabled` | `true` | Auto-start recording on workspace load. |
-| `aiActivityVisualizer.retentionDays` | `30` | Maximum days to store session events in SQLite. |
-| `aiActivityVisualizer.maxEventsPerSession` | `20000` | Maximum event capacity per session. |
+| `aiActivityVisualizer.recordingEnabled` | `true` | Automatically starts recording on workspace launch. |
+| `aiActivityVisualizer.retentionDays` | `30` | Maximum retention period in days for SQLite event logs. |
+| `aiActivityVisualizer.maxEventsPerSession` | `20000` | Maximum event capacity per recorded session. |
+| `aiActivityVisualizer.graphNodeLimit` | `1000` | Maximum number of file nodes rendered in the graph. |
 | `aiActivityVisualizer.httpReceiverPort` | `5174` | Local loopback port for HTTP event ingestion. |
-| `aiActivityVisualizer.excludedPatterns` | `["**/node_modules/**", "**/.git/**", ...]` | Glob patterns excluded from scanning and event recording. |
+| `aiActivityVisualizer.enabledAdapters` | `["vscode", "copilot", "antigravity", "http"]` | List of active telemetry adapters. |
+| `aiActivityVisualizer.excludedPatterns` | `["**/node_modules/**", "**/.git/**", "**/dist/**", ...]` | Glob patterns excluded from activity recording. |
 
 ---
 
-## 📦 Building & Testing
+## Building and Testing
+
+Prerequisites: Node.js (v18 or higher) and npm.
 
 ```bash
 # Install dependencies
 npm install
 
-# Compile TypeScript
+# Run static type checks
 npm run compile
 
-# Run Vitest test suite
+# Execute unit and integration tests
 npm test
 
-# Build production bundles (extension + webview)
+# Build production bundles (extension and webview)
 npm run build
 
-# Package installable VSIX
+# Package installable VSIX package
 npm run package
 ```
+
+---
+
+## Repository and Live Bridge Server
+
+To run the live backend bridge server independently:
+
+```bash
+node live_bridge_server.mjs
+```
+
+The bridge server will detect active Antigravity conversations, tail transcript logs in real time, and serve the dashboard locally at `http://127.0.0.1:5175/`.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

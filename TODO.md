@@ -58,7 +58,18 @@
   - [x] HTTP receiver security tests (token validation, payload sanitization)
 
 - [x] **8. Verification & Packaging**
-  - [x] Run test suite with Vitest (13/13 passing)
+  - [x] Run test suite with Vitest (18/18 passing across 5 test suites)
   - [x] Run TypeScript type check (`tsc --noEmit` clean)
   - [x] Package extension `.vsix` using `@vscode/vsce`
   - [x] Complete documentation: `README.md`, `ARCHITECTURE.md`, `PRIVACY.md`, `AGENT-INTEGRATIONS.md`, `TROUBLESHOOTING.md`, `CHANGELOG.md`
+
+- [x] **9. 3D Focus Tracking, Anti-Spin Bug Fix & Apple Glass Dashboard**
+  - [x] Full viewport background 3D canvas (`inset: 0`, 100vw, 100vh)
+  - [x] Apple / macOS / iOS frosted glass floating overlay panels (`apple-glass`, `backdrop-filter: blur(20px)`)
+  - [x] Dynamic 3D camera node follow and LookAt tracking (`trackingNode`, `lookAtX, Y, Z`)
+  - [x] Shortest-path angular wrapping delta fix on camera yaw (eliminates wild spinning)
+  - [x] Dedicated bottom-left Live Agent Trace terminal dock with filters and one-click focus
+  - [x] Live Stack layout fix (`flex-1 min-h-0 overflow-y-auto`, no card clipping)
+  - [x] Synchronized brain artifact dashboard
+  - [x] Comprehensive unit tests passing (40/40 tests across 6 suites)
+  - [x] Professional emoji-free README and MIT license

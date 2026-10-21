@@ -78,7 +78,7 @@ describe('Agent and Ingestion Adapters', () => {
     expect(captured!.correlationId).toBe('conv_99');
   });
 
-  it('ingests authenticated events over loopback HTTP', async () => {
+  it('ingests authenticated events over loopback HTTP and rejects unauthenticated requests', async () => {
     let captured: RawEventInput | null = null;
     const token = 'secret-test-token-12345';
     const adapter = new GenericHttpAdapter('sess_1', 'ws_1', 'C:/proj', 0, token);
@@ -88,15 +88,24 @@ describe('Agent and Ingestion Adapters', () => {
 
     const port = adapter.getPort();
 
-    // 1. Unauthorized request
-    const unauthorized = await makeRequest(`http://127.0.0.1:${port}/api/events`, {
+    // 1. Request with NO Authorization header at all MUST be rejected (Finding 1 fix)
+    const missingToken = await makeRequest(`http://127.0.0.1:${port}/api/events`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer bad-token' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ activityType: 'tool_call', toolName: 'bash' })
     });
-    expect(unauthorized.statusCode).toBe(401);
+    expect(missingToken.statusCode).toBe(401);
+    expect(missingToken.data).toContain('Unauthorized');
 
-    // 2. Authorized request
+    // 2. Request with bad token MUST be rejected
+    const badToken = await makeRequest(`http://127.0.0.1:${port}/api/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer wrong-token' },
+      body: JSON.stringify({ activityType: 'tool_call', toolName: 'bash' })
+    });
+    expect(badToken.statusCode).toBe(401);
+
+    // 3. Authorized request with Bearer header
     const authorized = await makeRequest(`http://127.0.0.1:${port}/api/events`, {
       method: 'POST',
       headers: {
@@ -116,7 +125,40 @@ describe('Agent and Ingestion Adapters', () => {
     expect(captured!.provider).toBe('antigravity');
     expect(captured!.toolName).toBe('run_command');
 
+    // 4. Authorized request with query param token
+    const queryAuth = await makeRequest(`http://127.0.0.1:${port}/api/events?token=${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        activityType: 'tool_call',
+        toolName: 'query_test'
+      })
+    });
+    expect(queryAuth.statusCode).toBe(200);
+
+    // 5. GET / serves the Agent Brain HTML observatory dashboard
+    const dashboard = await makeRequest(`http://127.0.0.1:${port}/`, {
+      method: 'GET',
+      headers: {}
+    });
+    expect(dashboard.statusCode).toBe(200);
+    expect(dashboard.data).toContain('Agent Brain');
+    expect(dashboard.data).toContain('Local Activity Receiver');
+
     adapter.dispose();
+  });
+
+  it('generates authenticated Antigravity hook scripts and validates configuration', () => {
+    const adapter = new AntigravityHookAdapter('sess_test', 'ws_test', 'C:/proj');
+    const script = adapter.generateHookScript('test-token-abc', 5174);
+    expect(script).toContain('test-token-abc');
+    expect(script).toContain('5174');
+    expect(script).toContain('Authorization');
+    expect(script).toContain('x-provider');
+
+    const validation = adapter.validateHookConfiguration();
+    expect(validation).toHaveProperty('valid');
+    expect(validation).toHaveProperty('diagnostic');
   });
 });
 
@@ -127,7 +169,7 @@ function makeRequest(urlStr: string, options: { method: string; headers: Record<
       {
         hostname: url.hostname,
         port: url.port,
-        path: url.pathname,
+        path: url.pathname + url.search,
         method: options.method,
         headers: options.headers
       },

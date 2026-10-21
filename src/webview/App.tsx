@@ -13,6 +13,7 @@ import {
   ExtensionToWebviewMessage,
   GraphEdge,
   GraphNode,
+  SessionComparisonResult,
   SessionRecord,
   WebviewToExtensionMessage,
   WorkspaceStats
@@ -59,6 +60,7 @@ export const App: React.FC = () => {
   const [attentionOnly, setAttentionOnly] = useState<boolean>(false);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [recordingStatus, setRecordingStatus] = useState<'active' | 'paused' | 'stopped'>('active');
+  const [comparisonResult, setComparisonResult] = useState<SessionComparisonResult | null>(null);
 
   const postMessage = useCallback((msg: WebviewToExtensionMessage) => {
     if (vscodeApi) {
@@ -116,6 +118,10 @@ export const App: React.FC = () => {
 
         case 'REPLAY_EVENTS':
           setEvents(msg.events);
+          break;
+
+        case 'SESSION_COMPARISON_RESULT':
+          setComparisonResult(msg.result);
           break;
       }
     };
@@ -186,11 +192,16 @@ export const App: React.FC = () => {
             onSelectNode={(node) => console.log('Selected node:', node)}
             onOpenFile={handleOpenFile}
             onTriggerReplay={handleTriggerReplay}
+            onRefreshGraph={() => postMessage({ type: 'TRIGGER_GRAPH_REFRESH' })}
           />
 
           <AgentTraceTerminal events={events} onOpenFile={handleOpenFile} />
 
-          <TraceCards events={events} onOpenFile={handleOpenFile} />
+          <TraceCards
+            events={events}
+            onOpenFile={handleOpenFile}
+            onInspectEvent={() => setActiveView('timeline')}
+          />
         </div>
       )}
 
@@ -212,9 +223,28 @@ export const App: React.FC = () => {
         <SessionView
           sessions={sessionsList}
           currentSessionId={session?.id || ''}
+          replayEvents={events}
+          comparisonResult={comparisonResult}
           onSelectSession={handleSelectSession}
           onExportSession={handleExportSession}
           onDeleteSession={handleDeleteSession}
+          onCompareSessions={(a, b) => postMessage({ type: 'COMPARE_SESSIONS', sessionAId: a, sessionBId: b })}
+          onReplayStep={(replayedEvt) => {
+            if (replayedEvt.filePath) {
+              setNodes((prevNodes) =>
+                prevNodes.map((n) =>
+                  n.id === replayedEvt.filePath
+                    ? {
+                        ...n,
+                        lastActivityType: replayedEvt.activityType,
+                        lastActivityTimestamp: replayedEvt.timestamp,
+                        lastProvider: replayedEvt.provider
+                      }
+                    : n
+                )
+              );
+            }
+          }}
         />
       )}
     </div>

@@ -4,9 +4,10 @@ import { ActivityEvent } from '../../types/events';
 interface TraceCardsProps {
   events: ActivityEvent[];
   onOpenFile: (filePath: string) => void;
+  onInspectEvent?: (event: ActivityEvent) => void;
 }
 
-export const TraceCards: React.FC<TraceCardsProps> = ({ events, onOpenFile }) => {
+export const TraceCards: React.FC<TraceCardsProps> = ({ events, onOpenFile, onInspectEvent }) => {
   // Take last 4 events with relevant file or tool info
   const relevantEvents = events
     .filter((e) => e.filePath || e.toolName || e.codeSnippet)
@@ -14,7 +15,26 @@ export const TraceCards: React.FC<TraceCardsProps> = ({ events, onOpenFile }) =>
     .reverse();
 
   if (relevantEvents.length === 0) {
-    return null;
+    return (
+      <div className="right-trace-stack">
+        <div className="trace-card" style={{ borderColor: 'var(--border-accent-cyan)' }}>
+          <div className="trace-card-header">
+            <div className="window-dots">
+              <span className="win-dot dot-red"></span>
+              <span className="win-dot dot-yellow"></span>
+              <span className="win-dot dot-green"></span>
+            </div>
+            <span className="trace-card-title">$ agent-brain --listen</span>
+          </div>
+          <div className="trace-card-body">
+            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: '#38bdf8' }}>
+              {`// Agent Brain live observatory ready\n// Ingesting Copilot, Antigravity & VS Code events\n// Awaiting agent invocations...`}
+            </pre>
+            <span className="trace-card-prompt-symbol">$</span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

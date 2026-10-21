@@ -163,6 +163,20 @@ export class SQLiteStorage {
     return this.db.exec(sql);
   }
 
+  public query<T = any>(sql: string, params: (string | number | boolean | null)[] = []): T[] {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare(sql);
+    if (params.length > 0) {
+      stmt.bind(params as (number | string | null | Uint8Array)[]);
+    }
+    const results: T[] = [];
+    while (stmt.step()) {
+      results.push(stmt.getAsObject() as unknown as T);
+    }
+    stmt.free();
+    return results;
+  }
+
   public scheduleSave(): void {
     this.dirty = true;
     if (!this.saveTimer) {

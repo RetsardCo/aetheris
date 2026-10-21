@@ -2,6 +2,18 @@
 
 All notable changes to the **AI Activity Visualizer** extension will be documented in this file.
 
+## [1.1.0] - 2026-10-21
+
+### Added
+- **Full Viewport 3D Background**: 3D constellation mesh renders across the entire viewport background (`inset: 0`), allowing unlimited zooming and panning without clipping.
+- **Dynamic 3D Camera Node Follow**: Continuous camera LookAt target tracking that smoothly follows focused nodes during orbital rotation or node movement. Includes a floating Return-to-Center unbind banner.
+- **Apple Frosted Glass UI**: Floating HUD panels, directory drawer, Live Stack, and cognition dock restyled with Apple/iOS/macOS-style frosted glass (`backdrop-filter: blur(20px) saturate(180%)`).
+- **Docked Bottom-Left Live Agent Trace**: Returned real-time agent execution trace terminal docked at the bottom-left edge outside the graph center, with live activity filtering (`All`, `Write`, `Read`, `Exec`, `Think`) and one-click 3D focus.
+
+### Fixed
+- **Shortest-Path Angular Velocity Stabilization**: Resolved high-speed spinning bug on node focus and search by implementing shortest-path angular delta wrapping on camera yaw.
+- **Live Stack Layout Fix**: Fixed right sidebar container height and card clipping with dedicated scrollable flex layout.
+
 ## [1.0.0] - 2026-10-20
 
 ### Added

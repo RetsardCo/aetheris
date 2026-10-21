@@ -11,6 +11,7 @@ interface ConstellationGraphProps {
   onSelectNode: (node: GraphNode) => void;
   onOpenFile: (filePath: string) => void;
   onTriggerReplay: () => void;
+  onRefreshGraph?: () => void;
 }
 
 interface NodeSimulationPoint {
@@ -46,9 +47,11 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
   selectedFolder,
   onSelectNode,
   onOpenFile,
-  onTriggerReplay
+  onTriggerReplay,
+  onRefreshGraph
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Transform state: pan & zoom
   const transformRef = useRef({ x: 0, y: 0, scale: 1.0 });
@@ -358,6 +361,85 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
         }
       });
 
+      // 4.5 Draw Major Folder Cluster Centroid Titles (as shown in Agent Brain reference)
+      if (scale > 0.35) {
+        const clusterSums = new Map<string, { x: number; y: number; count: number }>();
+        points.forEach((p) => {
+          if (p.folder === 'root files' || !p.folder) return;
+          const ex = clusterSums.get(p.folder);
+          if (ex) {
+            ex.x += p.x;
+            ex.y += p.y;
+            ex.count++;
+          } else {
+            clusterSums.set(p.folder, { x: p.x, y: p.y, count: 1 });
+          }
+        });
+
+        ctx.save();
+        clusterSums.forEach((c, folderName) => {
+          if (c.count < 2) return;
+          const avgX = c.x / c.count;
+          const avgY = c.y / c.count;
+
+          ctx.font = '700 11px ui-monospace, SFMono-Regular, Menlo, monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
+          ctx.fillStyle = 'rgba(245, 158, 11, 0.85)';
+          ctx.fillText(folderName.toUpperCase(), avgX, avgY);
+        });
+        ctx.restore();
+      }
+
+      // 4.6 Draw Hover Tooltip on Node
+      const hovered = hoveredNodeRef.current;
+      if (hovered) {
+        ctx.save();
+        const tooltipX = hovered.x + 14;
+        const tooltipY = hovered.y - 28;
+        const n = hovered.node;
+
+        const line1 = n.name;
+        const line2 = `${n.folder} · ${n.readCount}R / ${n.writeCount}W / ${n.createCount}C`;
+        const line3 = n.lastActivityType ? `Last: ${n.lastActivityType} (${n.lastProvider || 'vscode'})` : 'No agent activity recorded';
+
+        ctx.font = 'bold 11px ui-monospace, monospace';
+        const w1 = ctx.measureText(line1).width;
+        ctx.font = '10px ui-monospace, monospace';
+        const w2 = ctx.measureText(line2).width;
+        const w3 = ctx.measureText(line3).width;
+        const cardW = Math.max(w1, w2, w3) + 20;
+        const cardH = 54;
+
+        ctx.fillStyle = 'rgba(11, 16, 26, 0.95)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1;
+        ctx.shadowBlur = 16;
+        ctx.shadowColor = 'rgba(56, 189, 248, 0.5)';
+
+        ctx.beginPath();
+        ctx.roundRect(tooltipX, tooltipY, cardW, cardH, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.font = 'bold 11px ui-monospace, monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(line1, tooltipX + 10, tooltipY + 16);
+
+        ctx.font = '10px ui-monospace, monospace';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(line2, tooltipX + 10, tooltipY + 31);
+
+        ctx.font = '10px ui-monospace, monospace';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(line3, tooltipX + 10, tooltipY + 46);
+
+        ctx.restore();
+      }
+
       // 5. Draw Orbiting Comet Trail
       const comet = cometRef.current;
       comet.angle += comet.speed;
@@ -525,7 +607,64 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
         <button className="control-pill-btn" onClick={handleResetView} title="Reset camera center">
           Reset View
         </button>
+        {onRefreshGraph && (
+          <button className="control-pill-btn" onClick={onRefreshGraph} title="Rescan repository files and dependencies">
+            Refresh
+          </button>
+        )}
+        <button
+          className="control-pill-btn"
+          onClick={() => setShowHelp(!showHelp)}
+          title="Observatory navigation help"
+          style={{ width: 24, height: 24, borderRadius: '50%', justifyContent: 'center', padding: 0 }}
+        >
+          ?
+        </button>
       </div>
+
+      {showHelp && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 64,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(11, 16, 26, 0.96)',
+            border: '1px solid #38bdf8',
+            borderRadius: 8,
+            padding: '12px 16px',
+            fontSize: 11,
+            color: '#cbd5e1',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.8)',
+            zIndex: 40,
+            maxWidth: 340,
+            lineHeight: 1.6
+          }}
+        >
+          <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>Agent Brain Navigation</div>
+          <div>• <strong>Pan:</strong> Click & drag anywhere on the canvas</div>
+          <div>• <strong>Zoom:</strong> Scroll mouse wheel</div>
+          <div>• <strong>Inspect File:</strong> Click any node to open in VS Code</div>
+          <div>• <strong>Amber Nodes:</strong> Modified files (write/edit)</div>
+          <div>• <strong>Cyan Nodes:</strong> Read files (read/view)</div>
+          <div>• <strong>Emerald Nodes:</strong> Created files</div>
+          <button
+            onClick={() => setShowHelp(false)}
+            style={{
+              marginTop: 8,
+              background: '#1e293b',
+              color: '#fff',
+              border: 'none',
+              padding: '3px 8px',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 10
+            }}
+          >
+            Close
+          </button>
+        </div>
+      )}
     </div>
   );
 };

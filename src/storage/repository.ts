@@ -1,4 +1,5 @@
-import { ActivityEvent, ActivityType, EvidenceLevel, GraphEdge, Provider, SessionRecord } from '../types/events';
+import { ActivityEvent, ActivityType, EvidenceLevel, GraphEdge, Provider, SessionRecord, SessionComparisonResult } from '../types/events';
+import { redactString, sanitizeMetadata } from '../pipeline/redactor';
 import { SQLiteStorage } from './database';
 
 export class ActivityRepository {
@@ -34,15 +35,14 @@ export class ActivityRepository {
   }
 
   public getSession(id: string): SessionRecord | null {
-    const res = this.storage.exec(`SELECT * FROM sessions WHERE id = "${id}" LIMIT 1`);
-    if (!res.length || !res[0].values.length) return null;
-    return this.mapSessionRow(res[0].columns, res[0].values[0]);
+    const rows = this.storage.query('SELECT * FROM sessions WHERE id = ? LIMIT 1', [id]);
+    if (!rows.length) return null;
+    return this.mapSessionObject(rows[0]);
   }
 
   public listSessions(): SessionRecord[] {
-    const res = this.storage.exec('SELECT * FROM sessions ORDER BY start_time DESC');
-    if (!res.length) return [];
-    return res[0].values.map((row: any[]) => this.mapSessionRow(res[0].columns, row));
+    const rows = this.storage.query('SELECT * FROM sessions ORDER BY start_time DESC');
+    return rows.map((r) => this.mapSessionObject(r));
   }
 
   public deleteSession(sessionId: string): void {
@@ -85,43 +85,33 @@ export class ActivityRepository {
   }
 
   public getEventsBySession(sessionId: string, limit = 500, offset = 0): ActivityEvent[] {
-    const res = this.storage.exec(`
-      SELECT * FROM events 
-      WHERE session_id = "${sessionId}" 
-      ORDER BY timestamp ASC 
-      LIMIT ${limit} OFFSET ${offset}
-    `);
-    if (!res.length) return [];
-    return res[0].values.map((row: any[]) => this.mapEventRow(res[0].columns, row));
+    const rows = this.storage.query(
+      'SELECT * FROM events WHERE session_id = ? ORDER BY timestamp ASC LIMIT ? OFFSET ?',
+      [sessionId, limit, offset]
+    );
+    return rows.map((r) => this.mapEventObject(r));
   }
 
   public getRecentEvents(sessionId: string, limit = 50): ActivityEvent[] {
-    const res = this.storage.exec(`
-      SELECT * FROM events 
-      WHERE session_id = "${sessionId}" 
-      ORDER BY timestamp DESC 
-      LIMIT ${limit}
-    `);
-    if (!res.length) return [];
-    // Return chronological order
-    return res[0].values.map((row: any[]) => this.mapEventRow(res[0].columns, row)).reverse();
+    const rows = this.storage.query(
+      'SELECT * FROM events WHERE session_id = ? ORDER BY timestamp DESC LIMIT ?',
+      [sessionId, limit]
+    );
+    return rows.map((r) => this.mapEventObject(r)).reverse();
   }
 
   public getTouchedFilesMap(sessionId: string): Map<string, { read: number; write: number; create: number; delete: number; lastTime: number }> {
     const map = new Map<string, { read: number; write: number; create: number; delete: number; lastTime: number }>();
-    const res = this.storage.exec(`
-      SELECT file_path, activity_type, MAX(timestamp) as last_time, COUNT(*) as cnt
-      FROM events
-      WHERE session_id = "${sessionId}" AND file_path IS NOT NULL
-      GROUP BY file_path, activity_type
-    `);
+    const rows = this.storage.query<{ file_path: string; activity_type: string; last_time: number; cnt: number }>(
+      'SELECT file_path, activity_type, MAX(timestamp) as last_time, COUNT(*) as cnt FROM events WHERE session_id = ? AND file_path IS NOT NULL GROUP BY file_path, activity_type',
+      [sessionId]
+    );
 
-    if (!res.length) return map;
-    for (const row of res[0].values) {
-      const filePath = row[0] as string;
-      const actType = row[1] as string;
-      const lastTime = row[2] as number;
-      const cnt = row[3] as number;
+    for (const row of rows) {
+      const filePath = row.file_path;
+      const actType = row.activity_type;
+      const lastTime = row.last_time;
+      const cnt = row.cnt;
 
       let entry = map.get(filePath);
       if (!entry) {
@@ -157,19 +147,17 @@ export class ActivityRepository {
   }
 
   public getDependencyEdges(workspaceId: string): GraphEdge[] {
-    const res = this.storage.exec(`
-      SELECT id, source, target, type, confidence, provenance 
-      FROM dependency_edges 
-      WHERE workspace_id = "${workspaceId}"
-    `);
-    if (!res.length) return [];
-    return res[0].values.map((row: any[]) => ({
-      id: row[0] as string,
-      source: row[1] as string,
-      target: row[2] as string,
-      type: row[3] as 'import' | 'activity_flow',
-      confidence: row[4] as number,
-      provenance: row[5] as string
+    const rows = this.storage.query<{ id: string; source: string; target: string; type: string; confidence: number; provenance: string }>(
+      'SELECT id, source, target, type, confidence, provenance FROM dependency_edges WHERE workspace_id = ?',
+      [workspaceId]
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      source: r.source,
+      target: r.target,
+      type: r.type as 'import' | 'activity_flow',
+      confidence: r.confidence,
+      provenance: r.provenance
     }));
   }
 
@@ -177,30 +165,68 @@ export class ActivityRepository {
 
   public pruneRetention(retentionDays: number): number {
     const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
-    const res = this.storage.exec(`SELECT id FROM sessions WHERE start_time < ${cutoff}`);
-    if (!res.length || !res[0].values.length) return 0;
+    const expired = this.storage.query<{ id: string }>('SELECT id FROM sessions WHERE start_time < ?', [cutoff]);
+    if (!expired.length) return 0;
 
-    const ids = res[0].values.map((v: any[]) => `"${v[0]}"`).join(',');
-    this.storage.run(`DELETE FROM events WHERE session_id IN (${ids})`);
-    this.storage.run(`DELETE FROM sessions WHERE id IN (${ids})`);
-    return res[0].values.length;
+    this.storage.run('BEGIN TRANSACTION;');
+    for (const s of expired) {
+      this.storage.run('DELETE FROM events WHERE session_id = ?', [s.id]);
+      this.storage.run('DELETE FROM sessions WHERE id = ?', [s.id]);
+    }
+    this.storage.run('COMMIT;');
+    return expired.length;
+  }
+
+  // --- Session Comparison ---
+
+  public compareSessions(sessionIdA: string, sessionIdB: string): SessionComparisonResult | null {
+    const sA = this.getSession(sessionIdA);
+    const sB = this.getSession(sessionIdB);
+    if (!sA || !sB) return null;
+
+    const mapA = this.getTouchedFilesMap(sessionIdA);
+    const mapB = this.getTouchedFilesMap(sessionIdB);
+
+    const setA = new Set(mapA.keys());
+    const setB = new Set(mapB.keys());
+
+    const filesTouchedAOnly = [...setA].filter((f) => !setB.has(f)).sort();
+    const filesTouchedBOnly = [...setB].filter((f) => !setA.has(f)).sort();
+    const filesTouchedBoth = [...setA].filter((f) => setB.has(f)).sort();
+
+    const durationA = (sA.endTime || Date.now()) - sA.startTime;
+    const durationB = (sB.endTime || Date.now()) - sB.startTime;
+
+    return {
+      sessionA: sA,
+      sessionB: sB,
+      durationDiffMs: Math.abs(durationA - durationB),
+      eventsDiff: Math.abs(sA.totalEvents - sB.totalEvents),
+      toolCallsDiff: Math.abs(sA.toolCalls - sB.toolCalls),
+      filesTouchedAOnly,
+      filesTouchedBOnly,
+      filesTouchedBoth
+    };
   }
 
   public exportSession(sessionId: string): { session: SessionRecord; events: ActivityEvent[] } | null {
     const session = this.getSession(sessionId);
     if (!session) return null;
-    const events = this.getEventsBySession(sessionId, 50000, 0);
-    return { session, events };
+    const rawEvents = this.getEventsBySession(sessionId, 50000, 0);
+
+    // Apply export redaction for sensitive fields and secrets
+    const redactedEvents = rawEvents.map((e) => ({
+      ...e,
+      metadata: sanitizeMetadata(e.metadata),
+      codeSnippet: e.codeSnippet ? redactString(e.codeSnippet) : null
+    }));
+
+    return { session, events: redactedEvents };
   }
 
-  // --- Row Mappers ---
+  // --- Object Mappers ---
 
-  private mapSessionRow(cols: string[], row: any[]): SessionRecord {
-    const obj: any = {};
-    cols.forEach((col, idx) => {
-      obj[col] = row[idx];
-    });
-
+  private mapSessionObject(obj: any): SessionRecord {
     let activeProviders: string[] = [];
     try {
       activeProviders = JSON.parse(obj.active_providers || '[]');
@@ -223,12 +249,7 @@ export class ActivityRepository {
     };
   }
 
-  private mapEventRow(cols: string[], row: any[]): ActivityEvent {
-    const obj: any = {};
-    cols.forEach((col, idx) => {
-      obj[col] = row[idx];
-    });
-
+  private mapEventObject(obj: any): ActivityEvent {
     let metadata = {};
     try {
       metadata = JSON.parse(obj.metadata || '{}');

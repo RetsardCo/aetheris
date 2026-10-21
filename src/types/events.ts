@@ -102,6 +102,17 @@ export interface WorkspaceStats {
   topFolders: Array<{ path: string; count: number; color: string }>;
 }
 
+export interface SessionComparisonResult {
+  sessionA: SessionRecord;
+  sessionB: SessionRecord;
+  durationDiffMs: number;
+  eventsDiff: number;
+  toolCallsDiff: number;
+  filesTouchedAOnly: string[];
+  filesTouchedBOnly: string[];
+  filesTouchedBoth: string[];
+}
+
 // Webview Communication Messages
 export type WebviewToExtensionMessage =
   | { type: 'GET_INITIAL_STATE' }
@@ -114,6 +125,7 @@ export type WebviewToExtensionMessage =
   | { type: 'SELECT_SESSION'; sessionId: string }
   | { type: 'EXPORT_SESSION'; sessionId: string }
   | { type: 'DELETE_SESSION'; sessionId: string }
+  | { type: 'COMPARE_SESSIONS'; sessionAId: string; sessionBId: string }
   | { type: 'TRIGGER_GRAPH_REFRESH' };
 
 export type ExtensionToWebviewMessage =
@@ -155,4 +167,8 @@ export type ExtensionToWebviewMessage =
       type: 'REPLAY_EVENTS';
       sessionId: string;
       events: ActivityEvent[];
+    }
+  | {
+      type: 'SESSION_COMPARISON_RESULT';
+      result: SessionComparisonResult;
     };

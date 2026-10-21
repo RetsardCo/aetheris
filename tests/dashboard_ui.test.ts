@@ -1,0 +1,211 @@
+import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
+
+describe('Agent Brain 3D Dashboard & UI Verification', () => {
+  const scratchHtmlPath = path.resolve(__dirname, '../agent_brain_dashboard.html');
+  const brainHtmlPath = 'C:\\Users\\Kurados\\.gemini\\antigravity\\brain\\12ab87b3-0219-43f1-bd04-f890005d6af6\\agent_brain_dashboard.html';
+
+  it('scratch dashboard HTML exists and is populated', () => {
+    expect(fs.existsSync(scratchHtmlPath)).toBe(true);
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content.length).toBeGreaterThan(10000);
+  });
+
+  it('brain artifact dashboard HTML exists and matches scratch version', () => {
+    expect(fs.existsSync(brainHtmlPath)).toBe(true);
+    const scratchContent = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    const brainContent = fs.readFileSync(brainHtmlPath, 'utf-8');
+    expect(brainContent).toBe(scratchContent);
+  });
+
+  it('removes scanline and blurry CRT effect filters completely', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).not.toContain('class="scanline"');
+    expect(content).not.toContain('.scanline {');
+  });
+
+  it('implements 3D orbital projection engine and 360-degree camera controls', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('project3D');
+    expect(content).toContain('camera.yaw');
+    expect(content).toContain('camera.pitch');
+    expect(content).toContain('autoOrbit');
+    expect(content).toContain('360° ORBIT');
+    expect(content).toContain('Isometric 3D');
+  });
+
+  it('implements 3D cluster hull meshes and luminous connections web', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('clusterHull');
+    expect(content).toContain('chkClusterHulls');
+    expect(content).toContain('chkConnections');
+    expect(content).toContain('energyPackets');
+    expect(content).toContain('comets3D');
+  });
+
+  it('implements live AI thinking reasoning stream and inspector HUD', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('latestThoughtContent');
+    expect(content).toContain('thoughtModal');
+    expect(content).toContain('nodeInspectorModal');
+    expect(content).toContain('btnBigBang');
+    expect(content).toContain('btnPulseCore');
+  });
+
+  it('implements syntax-highlighted code trace cards matching reference design', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('code-syntax');
+    expect(content).toContain('syn-keyword');
+    expect(content).toContain('syn-fn');
+    expect(content).toContain('syn-string');
+    expect(content).toContain('formatSyntaxHighlight');
+    expect(content).toContain('traceCardsContainer');
+  });
+
+  it('implements smart labeling with text backdrops to eliminate unreadable label clumps', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('shouldShowLabel');
+    expect(content).toContain('roundRect');
+    expect(content).toContain('chkLabels');
+    expect(content).toContain('isHovered');
+    expect(content).toContain('badgeWidth');
+  });
+
+  it('implements wide 3D cluster constellations and polyhedral cages', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('cageVerts');
+    expect(content).toContain('cageEdges');
+    expect(content).toContain('ringPts');
+    expect(content).toContain('clusterCentroids');
+    expect(content).toContain('CORE ENGINE');
+    expect(content).toContain('WEBVIEW UI');
+    expect(content).toContain('ADAPTERS');
+  });
+
+  it('implements Antigravity thought panel at the bottom ("sa baba") with duration badge and expandable drawer', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('cognitionDock');
+    expect(content).toContain('thoughtDurationBadge');
+    expect(content).toContain('thoughtDurationText');
+    expect(content).toContain('thoughtChevron');
+    expect(content).toContain('cognitionDrawer');
+    expect(content).toContain('Thought for 25s');
+    expect(content).toContain('toggleCognitionDock');
+    expect(content).toContain('renderThoughtMarkdown');
+  });
+
+  it('implements semi-transparent luminous 3D nodes so nodes behind them are visible', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('hexToRgba');
+    expect(content).toContain('baseAlpha');
+    expect(content).toContain('coreGrad');
+    expect(content).toContain('haloGrad');
+    expect(content).toContain('Frosted Glass Effect');
+  });
+
+  it('implements multi-project layered panels with smooth animated switching transitions', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('projectTabBar');
+    expect(content).toContain('projectTabsContainer');
+    expect(content).toContain('projectPanelsWrapper');
+    expect(content).toContain('switchProjectTab');
+    expect(content).toContain('project-pane');
+    expect(content).toContain('slide-left');
+    expect(content).toContain('projectState');
+    expect(content).toContain('renderProjectPanels');
+  });
+
+  it('unblocks the center 3D canvas viewport by removing center-blocking floating panels', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('viewportCanvas');
+    // Ensure traceLog is docked and not floating in the canvas center overlay
+    expect(content).not.toContain('<div class="self-center pointer-events-auto w-[640px]');
+  });
+
+  it('bridge server supports multi-project tracking, thought durations, and API endpoints', () => {
+    const bridgePath = path.resolve(__dirname, '../live_bridge_server.mjs');
+    expect(fs.existsSync(bridgePath)).toBe(true);
+    const bridgeContent = fs.readFileSync(bridgePath, 'utf-8');
+    expect(bridgeContent).toContain('conversations: new Map()');
+    expect(bridgeContent).toContain('durationSeconds');
+    expect(bridgeContent).toContain('getProjectNameForConversation');
+    expect(bridgeContent).toContain('getOrCreateConversation');
+    expect(bridgeContent).toContain('/api/conversations');
+    expect(bridgeContent).toContain('conversation_update');
+    expect(bridgeContent).toContain('extractMentionedFiles');
+    expect(bridgeContent).toContain('conv.turns');
+  });
+
+  it('implements automatic node highlighting with ambient energy aura during AI thought reasoning', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('highlightThoughtNodes');
+    expect(content).toContain('hasThoughtAura');
+    expect(content).toContain('n._thoughtAura');
+    expect(content).toContain('auraRad');
+    expect(content).toContain('auraGrad');
+  });
+
+  it('implements synchronized cause-and-effect timeline turns pairing thoughts with subsequent file actions', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('turns-timeline');
+    expect(content).toContain('turn-card');
+    expect(content).toContain('PRODUCED ACTIONS');
+    expect(content).toContain('action-node-pill');
+    expect(content).toContain('COGNITION TIMELINE');
+  });
+
+  it('implements collapsible sidebars to give 100% unobstructed central 3D viewport width', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('btnToggleLeftSidebar');
+    expect(content).toContain('btnToggleRightSidebar');
+    expect(content).toContain('leftSidebar');
+    expect(content).toContain('rightTraceStack');
+  });
+
+  it('implements live typing stream animation with streaming cursor indicator', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('streamingThoughtText');
+    expect(content).toContain('cursor-stream');
+    expect(content).toContain('cursor-blink');
+  });
+
+  it('renders 3D canvas across entire viewport background with Apple-style frosted glass floating overlay panels', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-auto');
+    expect(content).toContain('apple-glass');
+    expect(content).toContain('backdrop-filter: blur(20px) saturate(180%)');
+    expect(content).toContain('flex-1 min-h-0 overflow-y-auto');
+  });
+
+  it('implements continuous 3D camera node follow and dynamic target LookAt tracking', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('trackingNode');
+    expect(content).toContain('lookAtX');
+    expect(content).toContain('lookAtY');
+    expect(content).toContain('lookAtZ');
+    expect(content).toContain('targetLookAtX');
+    expect(content).toContain('trackingBanner');
+    expect(content).toContain('btnClearTracking');
+    expect(content).toContain('showTrackingUI');
+    expect(content).toContain('hideTrackingUI');
+    expect(content).toContain('FOLLOWING NODE:');
+  });
+
+  it('fixes wild spinning bug with shortest-path angular delta wrapping on camera yaw', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('deltaYaw');
+    expect(content).toContain('(camera.targetYaw - camera.yaw) % (Math.PI * 2)');
+    expect(content).toContain('deltaYaw > Math.PI');
+    expect(content).toContain('deltaYaw < -Math.PI');
+  });
+
+  it('docks Live Agent Trace terminal neatly at bottom-left side with filter controls', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('liveAgentTraceDock');
+    expect(content).toContain('traceLog');
+    expect(content).toContain('trace-filter');
+    expect(content).toContain('btnToggleTraceDock');
+    expect(content).toContain('LIVE AGENT TRACE');
+  });
+});

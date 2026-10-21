@@ -10,6 +10,7 @@ export class ControlSidebarViewProvider implements vscode.WebviewViewProvider {
   private onToggleRecording: (start: boolean) => void;
   private onOpenDashboard: () => void;
   private onShowDiagnostics: () => void;
+  private onValidateIntegrations: () => void;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -17,13 +18,15 @@ export class ControlSidebarViewProvider implements vscode.WebviewViewProvider {
     isRecording: boolean,
     onToggleRecording: (start: boolean) => void,
     onOpenDashboard: () => void,
-    onShowDiagnostics: () => void
+    onShowDiagnostics: () => void,
+    onValidateIntegrations: () => void
   ) {
     this.httpAdapter = httpAdapter;
     this.isRecording = isRecording;
     this.onToggleRecording = onToggleRecording;
     this.onOpenDashboard = onOpenDashboard;
     this.onShowDiagnostics = onShowDiagnostics;
+    this.onValidateIntegrations = onValidateIntegrations;
   }
 
   public setRecording(recording: boolean): void {
@@ -58,11 +61,16 @@ export class ControlSidebarViewProvider implements vscode.WebviewViewProvider {
         case 'openVsCode':
           this.onOpenDashboard();
           break;
-        case 'openBrowser':
-          vscode.env.openExternal(vscode.Uri.parse(this.httpAdapter.getUrl()));
+        case 'openBrowser': {
+          const authUrl = `${this.httpAdapter.getUrl()}?token=${encodeURIComponent(this.httpAdapter.getAuthToken())}`;
+          vscode.env.openExternal(vscode.Uri.parse(authUrl));
           break;
+        }
         case 'showLogs':
           this.onShowDiagnostics();
+          break;
+        case 'validateIntegrations':
+          this.onValidateIntegrations();
           break;
       }
     });
@@ -182,7 +190,10 @@ export class ControlSidebarViewProvider implements vscode.WebviewViewProvider {
 
   <div>
     <div class="section-title">DIAGNOSTICS</div>
-    <button style="width: 100%;" onclick="vscode.postMessage({ command: 'showLogs' })">Show Logs</button>
+    <div class="btn-row" style="margin-bottom: 6px;">
+      <button class="primary" onclick="vscode.postMessage({ command: 'validateIntegrations' })">Validate Integrations</button>
+      <button onclick="vscode.postMessage({ command: 'showLogs' })">Show Logs</button>
+    </div>
   </div>
 
   <script>

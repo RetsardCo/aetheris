@@ -1,0 +1,3024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Brain · 3D Neural Observatory (Aetheris)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #020617;
+      color: #f8fafc;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Ambient Space Nebula Background - Deep, Clean, No scanlines */
+    .space-bg {
+      background: 
+        radial-gradient(circle at 50% 45%, rgba(15, 23, 42, 0.75) 0%, rgba(2, 6, 23, 0.98) 70%, #020617 100%),
+        radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(168, 85, 247, 0.07) 0%, transparent 40%),
+        radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.06) 0%, transparent 35%);
+    }
+
+    
+    /* Apple / iOS / macOS Ultra-Crisp Frosted Glass */
+    .apple-glass {
+      background: rgba(8, 14, 26, 0.72);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .panel-collapsed-left {
+      transform: translateX(-360px) !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    .panel-collapsed-right {
+      transform: translateX(440px) !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    .trace-dock-minimized {
+      height: 38px !important;
+      overflow: hidden !important;
+    }
+
+    /* Crisp High-Contrast HUD Glass - Zero Blurry Filters */
+    .hud-glass {
+      background: rgba(8, 14, 26, 0.76);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.08);
+    }
+
+    .hud-glass-card {
+      background: rgba(11, 20, 38, 0.75);
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .hud-glass-card:hover {
+      border-color: rgba(56, 189, 248, 0.65);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.75), 0 0 12px rgba(56, 189, 248, 0.15);
+    }
+
+    /* Code Syntax Highlighting Classes for Trace Cards */
+    .code-syntax {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      background: #030712;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .syn-keyword { color: #f472b6; font-weight: 600; }
+    .syn-fn { color: #38bdf8; font-weight: 600; }
+    .syn-string { color: #34d399; }
+    .syn-comment { color: #64748b; font-style: italic; }
+    .syn-num { color: #fbbf24; }
+
+    /* Glow Accents */
+    .glow-cyan {
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.9), 0 0 20px rgba(6, 182, 212, 0.4);
+    }
+    .glow-amber {
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.9), 0 0 20px rgba(217, 119, 6, 0.4);
+    }
+    .glow-emerald {
+      text-shadow: 0 0 10px rgba(16, 185, 129, 0.9), 0 0 20px rgba(5, 150, 105, 0.4);
+    }
+
+    /* Minimalist High-Tech Scrollbars */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #38bdf8;
+    }
+
+    /* Semi-transparent Glass & Luminous Nodes */
+    .luminous-halo {
+      filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.45));
+    }
+
+    /* Multi-Project Layered Tabs & Panes with Smooth Transitions */
+    .project-tab-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      background: rgba(10, 20, 38, 0.7);
+      border: 1px solid rgba(30, 58, 95, 0.8);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+    }
+    .project-tab-btn:hover {
+      color: #e2e8f0;
+      background: rgba(14, 30, 56, 0.9);
+      border-color: rgba(56, 189, 248, 0.45);
+    }
+    .project-tab-btn.active {
+      color: #38bdf8;
+      background: rgba(14, 34, 68, 0.95);
+      border-color: rgba(56, 189, 248, 0.85);
+      box-shadow: 0 0 14px rgba(6, 182, 212, 0.25), inset 0 0 8px rgba(56, 189, 248, 0.15);
+    }
+
+    /* Animated Panes with Smooth Slide and Fade */
+    .project-pane-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      padding: 12px;
+    }
+    .project-pane {
+      position: absolute;
+      inset: 12px;
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 14px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(35px);
+      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s;
+      pointer-events: none;
+    }
+    .project-pane.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .project-pane.slide-left {
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-35px);
+      pointer-events: none;
+    }
+
+    /* Antigravity Native Thought Accordion & Streaming Glow */
+    .thought-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(14, 28, 54, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #38bdf8;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.18);
+    }
+    .thought-pill:hover {
+      background: rgba(18, 38, 74, 0.95);
+      border-color: rgba(56, 189, 248, 0.85);
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.35);
+      transform: translateY(-1px);
+    }
+    .thought-pill.thinking-active {
+      border-color: rgba(168, 85, 247, 0.7);
+      color: #c084fc;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+    }
+
+    /* Live Cursor Blinking */
+    @keyframes cursor-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .cursor-stream {
+      display: inline-block;
+      width: 7px;
+      height: 13px;
+      background: #38bdf8;
+      margin-left: 3px;
+      vertical-align: middle;
+      animation: cursor-blink 0.8s infinite;
+      box-shadow: 0 0 8px #00f0ff;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden bg-[#020617] text-slate-100 space-bg select-none">
+
+  <!-- TOP HOLOGRAPHIC HUD HEADER -->
+  <header class="absolute top-0 left-0 right-0 z-30 h-13 apple-glass border-b border-white/10 px-4 flex items-center justify-between text-xs">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5">
+        <span id="bridgeStatusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981] animate-pulse"></span>
+        <span class="font-extrabold tracking-wider text-white flex items-center gap-2 mono text-sm">
+          <svg class="w-4 h-4 text-cyan-400 animate-spin" style="animation-duration: 16s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+          AETHERIS <span class="text-[10px] text-cyan-300 bg-cyan-950/90 px-1.5 py-0.5 rounded border border-cyan-700/60 font-mono tracking-normal font-semibold">3D NEURAL</span>
+        </span>
+      </div>
+      <span class="text-[#1c3558]">|</span>
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] uppercase tracking-wider text-cyan-400 font-bold">LINK:</span>
+        <span id="bridgeStatusText" class="font-semibold text-emerald-400 mono text-[11px]">CONNECTING LIVE BRIDGE...</span>
+      </div>
+    </div>
+
+    <!-- Center Search & Spotlight in 3D -->
+    <div class="relative w-96 hidden md:block">
+      <input 
+        id="searchInput"
+        type="text" 
+        placeholder="Spotlight node in 3D... (e.g. extension.ts, transcript, cmd)" 
+        class="w-full bg-[#081326] border border-[#1e3c6b] rounded-md px-3 py-1.5 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 mono text-[11px] transition"
+      />
+      <div class="absolute right-2.5 top-2 flex items-center gap-1.5">
+        <span id="searchMatchCount" class="hidden text-[10px] text-cyan-400 bg-cyan-950 px-1.5 py-0.2 rounded border border-cyan-800 mono font-bold">0</span>
+        <span class="text-[10px] text-slate-500 mono">⌘F</span>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-2">
+      <!-- 360 Auto-Orbit Toggle -->
+      <button id="btnAutoOrbit" class="bg-[#0a1832] hover:bg-[#142c57] text-cyan-300 border border-cyan-500/80 px-2.5 py-1 rounded mono text-[11px] transition flex items-center gap-1.5 shadow-[0_0_10px_rgba(6,182,212,0.25)]">
+        <svg class="w-3.5 h-3.5 text-cyan-400 animate-spin" style="animation-duration: 8s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 2a10 10 0 0 1 10 10"></path>
+        </svg>
+        <span id="orbitLabel">360° ORBIT: ON</span>
+      </button>
+
+      <!-- Camera Presets Menu -->
+      <div class="relative">
+        <button id="btnCameraMenu" class="bg-[#0a1832] hover:bg-[#142c57] text-slate-200 border border-[#1e3c6b] px-2.5 py-1 rounded mono text-[11px] transition flex items-center gap-1">
+          <span>🎥 PRESETS</span>
+          <svg class="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        <div id="cameraDropdown" class="hidden absolute right-0 mt-1 w-44 hud-glass rounded-md border border-[#1e3c6b] py-1 shadow-2xl z-50 text-[11px] mono">
+          <button class="w-full text-left px-3 py-1.5 hover:bg-cyan-950 hover:text-cyan-300 transition" onclick="setCameraPreset('isometric')">📐 Isometric 3D</button>
+          <button class="w-full text-left px-3 py-1.5 hover:bg-cyan-950 hover:text-cyan-300 transition" onclick="setCameraPreset('top')">🔭 Top-Down Plane</button>
+          <button class="w-full text-left px-3 py-1.5 hover:bg-cyan-950 hover:text-cyan-300 transition" onclick="setCameraPreset('side')">⚡ Side Profile</button>
+          <button class="w-full text-left px-3 py-1.5 hover:bg-cyan-950 hover:text-cyan-300 transition" onclick="setCameraPreset('focusActive')">🎯 Focus Active</button>
+          <div class="border-t border-[#172e50] my-1"></div>
+          <button class="w-full text-left px-3 py-1.5 hover:bg-cyan-950 hover:text-cyan-300 transition" onclick="setCameraPreset('reset')">🔄 Reset Default</button>
+        </div>
+      </div>
+
+      <!-- Audio FX Synthesizer Toggle -->
+      <button id="btnAudioToggle" class="bg-[#0a1832] hover:bg-[#142c57] text-slate-200 border border-[#1e3c6b] px-2.5 py-1 rounded mono text-[11px] transition flex items-center gap-1">
+        <span id="audioIcon">🔊</span>
+        <span id="audioLabel">AUDIO FX</span>
+      </button>
+
+      <!-- Sidebar Collapse Toggles for 100% Unobstructed Central 3D Viewport -->
+      <button id="btnToggleLeftSidebar" title="Toggle Left Directory" class="bg-[#0a1832] hover:bg-[#142c57] text-cyan-300 border border-cyan-800/80 px-2.5 py-1 rounded mono text-[11px] transition flex items-center gap-1">
+        <span id="leftSidebarIcon">◀</span>
+        <span>DIRECTORY</span>
+      </button>
+
+      <button id="btnToggleRightSidebar" title="Toggle Right Code Stack" class="bg-[#0a1832] hover:bg-[#142c57] text-amber-300 border border-amber-800/80 px-2.5 py-1 rounded mono text-[11px] transition flex items-center gap-1">
+        <span>TRACE</span>
+        <span id="rightSidebarIcon">▶</span>
+      </button>
+
+      <!-- External Browser HUD Link -->
+      <a id="btnBrowserLink" href="http://127.0.0.1:5175/" target="_blank" class="bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/80 px-2.5 py-1 rounded font-medium transition flex items-center gap-1 text-[11px] mono">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+        Browser
+      </a>
+    </div>
+  </header>
+
+  <!-- FULL VIEWPORT 3D BACKGROUND CANVAS (Whole Background Observable & Zoomable) -->
+  <div id="canvasContainer" class="absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-auto">
+    <canvas id="viewportCanvas" class="w-full h-full cursor-grab active:cursor-grabbing block"></canvas>
+  </div>
+
+  <!-- FLOATING HUD RETICLE OVERLAYS (Central Space 100% Unobstructed) -->
+  <div class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-4">
+    
+    <!-- Top Centered Status HUD -->
+    <div class="flex justify-between items-start pt-14">
+      <div class="apple-glass pointer-events-auto px-3.5 py-1.5 rounded-full flex items-center gap-2 text-[10px] mono">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        <span class="font-bold tracking-widest text-cyan-300">3D MESH ORBITAL OBSERVATORY</span>
+      </div>
+
+      <!-- Live Dynamic Node Follow Banner (Visible when focusing/following node) -->
+      <div id="trackingBanner" class="hidden pointer-events-auto apple-glass px-4 py-1.5 rounded-full flex items-center gap-2.5 text-xs mono text-white shadow-2xl animate-pulse">
+        <span class="flex items-center gap-1.5 font-bold text-cyan-300">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          FOLLOWING NODE:
+        </span>
+        <span id="trackingNodeName" class="font-semibold text-amber-300 truncate max-w-[200px]">extension.ts</span>
+        <span class="text-white/20">|</span>
+        <button id="btnClearTracking" class="text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-[10px] transition font-semibold">
+          ✕ Return to Center
+        </button>
+      </div>
+
+      <!-- Camera Orientation Telemetry Pill -->
+      <div class="apple-glass pointer-events-auto px-3.5 py-1.5 rounded-full flex items-center gap-3 text-[10px] mono text-slate-300">
+        <span>PITCH: <span id="telemetryPitch" class="text-cyan-400">22°</span></span>
+        <span>YAW: <span id="telemetryYaw" class="text-cyan-400">45°</span></span>
+        <span>ZOOM: <span id="telemetryZoom" class="text-cyan-400">1.0x</span></span>
+      </div>
+    </div>
+
+    <!-- Central Hologram Core Label (Fades gracefully when camera tilts) -->
+    <div class="flex justify-center items-center pointer-events-none my-auto">
+      <div class="text-center opacity-85 transition-opacity duration-300" id="coreLabel">
+        <div id="coreTitle" class="text-[12px] tracking-[0.25em] uppercase font-black text-cyan-300 glow-cyan mono">AETHERIS CORE</div>
+        <div id="coreSubtitle" class="text-[9px] text-amber-400/90 mono mt-0.5 tracking-wider font-semibold">SYNAPSE ACTIVE // 360° ORBIT</div>
+      </div>
+    </div>
+
+    <!-- Quick Drag & Zoom Hint Overlay (Bottom Right, Unobtrusive) -->
+    <div class="flex justify-end items-end pointer-events-none mb-14 mr-2">
+      <div class="apple-glass px-2.5 py-1 rounded text-[10px] text-slate-400 mono">
+        Left-Drag: Rotate 360° · Right-Drag: Pan · Scroll: Zoom
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FLOATING FROSTED GLASS HUD PANELS (Apple / iOS / macOS Style) -->
+
+  <!-- LEFT CLUSTER DIRECTORY & METRICS PANEL (FLOATING APPLE GLASS) -->
+  <aside id="leftSidebar" class="absolute top-15 left-4 bottom-[240px] z-20 w-80 apple-glass rounded-2xl p-4 flex flex-col justify-between overflow-hidden shadow-2xl transition-all duration-300">
+    <div class="overflow-y-auto pr-1 flex-1">
+      <div class="text-[10px] tracking-widest uppercase text-cyan-400 font-extrabold mb-1 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8]"></span>
+        AETHERIS 3D OBSERVATORY
+      </div>
+      
+      <h1 class="text-base font-bold text-white tracking-tight leading-snug mt-1 mb-1">
+        Your repo,<br/>thinking out loud in 3D.
+      </h1>
+      
+      <p class="text-[11px] text-slate-300 leading-relaxed mb-3">
+        Interactive 360° spherical mesh of files, clusters, live reasoning, and dependencies.
+      </p>
+
+      <!-- Stats 4-Grid -->
+      <div class="grid grid-cols-4 gap-1.5 py-2 border-y border-white/10 mb-3 text-center bg-white/5 rounded-lg">
+        <div>
+          <div id="statFiles" class="text-sm font-extrabold text-white mono">0</div>
+          <div class="text-[8px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">FILES</div>
+        </div>
+        <div>
+          <div id="statFolders" class="text-sm font-extrabold text-white mono">0</div>
+          <div class="text-[8px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">CLUSTERS</div>
+        </div>
+        <div>
+          <div id="statEdges" class="text-sm font-extrabold text-cyan-400 mono">0</div>
+          <div class="text-[8px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">CONNS</div>
+        </div>
+        <div>
+          <div id="statTouched" class="text-sm font-extrabold text-amber-400 mono">0</div>
+          <div class="text-[8px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">TOUCHED</div>
+        </div>
+      </div>
+
+      <!-- Interactive Cluster Constellations List -->
+      <div class="mb-3">
+        <div class="text-[10px] uppercase tracking-widest text-slate-300 font-bold mb-1.5 flex items-center justify-between">
+          <span>3D CLUSTERS (CLICK TO FLY)</span>
+          <span class="text-[10px] text-slate-400 mono">TOUCHES</span>
+        </div>
+
+        <div id="clusterList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Telemetry & Performance Meters -->
+      <div class="p-2.5 rounded-lg bg-white/5 border border-white/10 mb-3 space-y-1.5 mono text-[10px]">
+        <div class="flex justify-between items-center text-slate-300">
+          <span class="font-bold">CORE FPS:</span>
+          <span id="fpsMeter" class="text-emerald-400 font-bold">60.0 FPS</span>
+        </div>
+        <div class="w-full bg-[#0d203d] h-1.5 rounded overflow-hidden">
+          <div id="fpsBar" class="bg-gradient-to-r from-cyan-400 to-emerald-400 h-full w-[100%] transition-all duration-300"></div>
+        </div>
+        <div class="flex justify-between text-slate-300">
+          <span>SYNAPSE EVENTS:</span>
+          <span id="telemetryEventCount" class="text-cyan-400 font-bold">0</span>
+        </div>
+        <div class="flex justify-between text-slate-300">
+          <span>SSE LINK:</span>
+          <span id="telemetryMode" class="text-emerald-400 font-semibold">STREAMING</span>
+        </div>
+      </div>
+
+      <!-- Visibility & View Toggles -->
+      <div class="space-y-1.5 pt-2 border-t border-white/10 text-xs">
+        <label class="flex items-center gap-2 text-slate-200 cursor-pointer hover:text-cyan-300 transition">
+          <input type="checkbox" id="chkLabels" class="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-0">
+          <span>Show all file labels</span>
+        </label>
+        <label class="flex items-center gap-2 text-slate-200 cursor-pointer hover:text-cyan-300 transition">
+          <input type="checkbox" id="chkClusterHulls" checked class="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-0">
+          <span>Show 3D cluster hull meshes</span>
+        </label>
+        <label class="flex items-center gap-2 text-slate-200 cursor-pointer hover:text-cyan-300 transition">
+          <input type="checkbox" id="chkConnections" checked class="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-0">
+          <span>Show luminous connections web</span>
+        </label>
+        <label class="flex items-center gap-2 text-slate-200 cursor-pointer hover:text-cyan-300 transition">
+          <input type="checkbox" id="chkAttention" class="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-0">
+          <span>Highlight active touches only</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Quick Action Buttons at bottom of left sidebar -->
+    <div class="pt-2.5 border-t border-white/10 flex items-center gap-1.5 shrink-0">
+      <button id="btnPulseCore" class="flex-1 bg-white/5 hover:bg-white/10 border border-cyan-500/40 px-2 py-1.5 rounded-md text-[10px] text-cyan-300 mono flex items-center justify-center gap-1 transition shadow-lg">
+        <svg class="w-3 h-3 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        Pulse Core
+      </button>
+
+      <button id="btnBigBang" class="flex-1 bg-white/5 hover:bg-white/10 border border-amber-500/40 px-2 py-1.5 rounded-md text-[10px] text-amber-300 mono flex items-center justify-center gap-1 transition shadow-lg">
+        <svg class="w-3 h-3 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="2" x2="12" y2="6"></line>
+          <line x1="12" y1="18" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+        </svg>
+        3D Shockwave
+      </button>
+
+      <button id="btnResetView" class="bg-white/5 hover:bg-white/10 border border-white/15 px-2 py-1.5 rounded-md text-[10px] text-slate-300 mono transition">
+        Reset 3D View
+      </button>
+    </div>
+  </aside>
+
+  <!-- LIVE AGENT TRACE DOCK (Docked to Bottom-Left side above the bottom dock) -->
+  <div id="liveAgentTraceDock" class="absolute left-4 bottom-15 z-25 w-80 h-44 apple-glass rounded-2xl p-3 flex flex-col shadow-2xl transition-all duration-300">
+    <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-white/10 shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse"></span>
+        <span class="text-[10px] font-bold text-white mono uppercase tracking-wider">LIVE AGENT TRACE</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1 text-[9px] mono">
+          <button class="trace-filter px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-semibold" data-filter="all">ALL</button>
+          <button class="trace-filter px-1.5 py-0.5 rounded hover:bg-white/10 text-amber-400" data-filter="write">WRITE</button>
+          <button class="trace-filter px-1.5 py-0.5 rounded hover:bg-white/10 text-cyan-400" data-filter="read">READ</button>
+          <button class="trace-filter px-1.5 py-0.5 rounded hover:bg-white/10 text-purple-400" data-filter="exec">EXEC</button>
+        </div>
+        <button id="btnToggleTraceDock" title="Minimize / Expand Trace" class="text-slate-400 hover:text-white px-1 mono text-xs">
+          ▼
+        </button>
+      </div>
+    </div>
+    <div id="traceLog" class="flex-1 overflow-y-auto pr-1 mono text-[10px] space-y-1 text-slate-200 cursor-pointer">
+      <div class="text-cyan-400/90">[SYSTEM] Aetheris 3D Neural Observatory online...</div>
+      <div class="text-emerald-400">[CONNECT] Live telemetry channel streaming from Antigravity.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT FLOATING LIVE CODE TRACE & ACTIONS STACK (REFERENCE-INSPIRED HIGH-FIDELITY CARDS) -->
+  <aside id="rightTraceStack" class="absolute top-15 right-4 bottom-15 z-20 w-[410px] max-w-[32vw] apple-glass rounded-2xl p-4 flex flex-col overflow-hidden shadow-2xl transition-all duration-300">
+    <div class="text-[10px] uppercase tracking-widest text-slate-300 font-extrabold pb-2 mb-2 border-b border-white/10 flex items-center justify-between shrink-0">
+      <span class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+        RECENT TOUCHED FILES & CODE TRACES
+      </span>
+      <span class="text-cyan-400 font-bold mono">LIVE STACK</span>
+    </div>
+
+    <!-- Container dynamically updated with latest touched files & real code snippets (CLEAN SCROLLING, NO CUTTING OFF) -->
+    <div id="traceCardsContainer" class="flex-1 min-h-0 overflow-y-auto pr-1.5 space-y-3">
+      <!-- Default Initial Cards -->
+      <div class="hud-glass-card rounded-lg p-3 text-xs mono">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span class="text-[11px] text-white font-semibold ml-1 truncate max-w-[210px]">src/extension.ts</span>
+          </div>
+          <span class="text-[9px] text-amber-300 font-bold bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">WRITE</span>
+        </div>
+        <div class="code-syntax">
+<span class="syn-keyword">export function</span> <span class="syn-fn">activate</span>(context: vscode.ExtensionContext) {
+  <span class="syn-keyword">const</span> normalizer = <span class="syn-keyword">new</span> <span class="syn-fn">EventNormalizer</span>();
+  <span class="syn-keyword">const</span> db = <span class="syn-keyword">new</span> <span class="syn-fn">SqliteDatabase</span>();
+  <span class="syn-keyword">return</span> { normalizer, db };
+}</div>
+      </div>
+
+      <div class="hud-glass-card rounded-lg p-3 text-xs mono">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span class="text-[11px] text-white font-semibold ml-1 truncate max-w-[210px]">live_bridge_server.mjs</span>
+          </div>
+          <span class="text-[9px] text-emerald-300 font-bold bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">CREATE</span>
+        </div>
+        <div class="code-syntax">
+<span class="syn-keyword">function</span> <span class="syn-fn">broadcastSSE</span>(type, payload) {
+  <span class="syn-keyword">const</span> msg = <span class="syn-string">`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`</span>;
+  <span class="syn-keyword">for</span> (<span class="syn-keyword">const</span> client <span class="syn-keyword">of</span> sseClients) client.write(msg);
+}</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- DEDICATED BOTTOM COGNITION & MULTI-PROJECT DOCK ("SA BABA") -->
+  <div id="cognitionDock" class="absolute bottom-2.5 left-4 right-4 z-30 apple-glass rounded-xl flex flex-col shadow-2xl transition-all duration-300">
+    
+    <!-- Dock Top Strip (Always Visible, Height 44px) -->
+    <div class="h-11 px-4 flex items-center justify-between text-xs border-b border-white/10">
+      
+      <!-- Left: Multi-Project Tabs Strip -->
+      <div class="flex items-center gap-2 overflow-x-auto pr-2" id="projectTabBar">
+        <span class="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold mono mr-1 flex items-center gap-1.5 shrink-0">
+          <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          PROJECTS:
+        </span>
+        <div id="projectTabsContainer" class="flex items-center gap-1.5 shrink-0">
+          <!-- Dynamically populated project tabs -->
+        </div>
+      </div>
+
+      <!-- Center: Antigravity Thought Badge (Signature Native Style) -->
+      <div id="thoughtBadgeBar" class="flex items-center gap-2.5 cursor-pointer px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition group shrink-0">
+        <div class="flex items-center gap-2">
+          <span id="thinkingDot" class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#00f0ff] animate-pulse"></span>
+          <div id="thoughtDurationBadge" class="thought-pill group-hover:border-cyan-400 transition">
+            <span id="thoughtDurationText">Thought for 25s</span>
+            <svg id="thoughtChevron" class="w-3.5 h-3.5 text-cyan-400 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </div>
+        </div>
+        <span class="text-white/20">|</span>
+        <div id="latestThoughtContent" class="text-slate-200 mono text-[11px] truncate max-w-[34vw] italic">
+          "Observing workspace activity and listening to Antigravity live transcript telemetry..."
+        </div>
+      </div>
+
+      <!-- Right Controls: Toggle Drawer & Step Counter -->
+      <div class="flex items-center gap-2 shrink-0">
+        <span id="thinkingBadge" class="text-[10px] text-cyan-400 mono bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/80 font-bold">
+          STEP #143
+        </span>
+        <button id="btnToggleDock" class="text-[11px] text-cyan-300 hover:text-white mono bg-cyan-950/90 hover:bg-cyan-900 px-2.5 py-1 rounded border border-cyan-700/80 transition flex items-center gap-1.5 font-semibold">
+          <span id="dockToggleIcon">▲</span>
+          <span id="dockToggleText">EXPAND REASONING</span>
+        </button>
+        <button id="btnOpenThoughtModal" class="text-[10px] text-cyan-300 hover:text-white mono border border-cyan-800/80 bg-cyan-950/70 px-2 py-1 rounded font-semibold transition hover:bg-cyan-900">
+          ARCHIVE
+        </button>
+      </div>
+    </div>
+
+    <!-- Expandable Drawer Content -->
+    <div id="cognitionDrawer" class="hidden h-72 overflow-hidden border-t border-white/10 bg-[#030917]/95">
+      <div class="project-pane-wrapper p-3.5" id="projectPanelsWrapper">
+        <!-- Default Initial Pane for primary project -->
+        <div id="projectPane_primary" class="project-pane active">
+          <!-- Left Column: Thought Reasoning Stream -->
+          <div class="flex flex-col h-full bg-[#060e20]/80 border border-white/10 rounded-xl p-3.5 overflow-hidden">
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8] animate-pulse"></span>
+                <span class="font-extrabold text-cyan-300 mono text-xs">ANTIGRAVITY NEURAL COGNITION STREAM</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="turnCounterLabel" class="text-[10px] text-slate-400 mono font-semibold">TURN #143</span>
+                <button id="btnHighlightThoughtNodes" class="text-[10px] text-cyan-300 hover:text-white bg-cyan-950/80 hover:bg-cyan-900 px-2 py-0.5 rounded border border-cyan-800/80 mono transition flex items-center gap-1 font-semibold">
+                  <span>🎯</span> Highlight in 3D
+                </button>
+              </div>
+            </div>
+            <div id="paneThoughtBody" class="flex-1 overflow-y-auto pr-2 mono text-xs text-slate-200 leading-relaxed space-y-2">
+              <div class="text-cyan-300 font-bold text-xs">## Multi-Project Reasoning & Architecture</div>
+              <p>Analyzing telemetry from workspace. Antigravity thoughts stream directly into dedicated layered project panels with live duration tracking, preventing confusion between multiple projects.</p>
+              <div class="text-slate-400 text-[11px]">- 3D Constellation nodes rendered with translucent frosted glass alpha</div>
+              <div class="text-slate-400 text-[11px]">- Real-time cause-and-effect timeline linking thoughts to tool operations</div>
+            </div>
+          </div>
+
+          <!-- Right Column: Cause & Effect Tool Actions & Live Agent Trace -->
+          <div class="flex flex-col h-full bg-[#060e20]/80 border border-white/10 rounded-xl p-3.5 overflow-hidden">
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+                <span class="text-slate-200 font-bold mono text-xs uppercase tracking-wider">PROJECT ACTIONS & TRACE</span>
+              </div>
+              <span class="text-[9px] text-cyan-400 mono font-bold">CAUSALITY STREAM</span>
+            </div>
+            <div class="project-actions-list flex-1 overflow-y-auto pr-1 mono text-[11px] space-y-1 text-slate-200">
+              <div class="text-cyan-400/90">[PROJECT] Initialized observation channel for ai-activity-visualizer...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING INTERACTIVE NODE DETAIL INSPECTOR (Modal/Card on Node Click) -->
+  <div id="nodeInspectorModal" class="hidden absolute top-20 right-[430px] z-40 w-84 apple-glass rounded-xl p-4 text-xs mono border border-cyan-500/50 shadow-2xl">
+    <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+      <div class="flex items-center gap-2">
+        <span id="inspectColorDot" class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+        <span id="inspectCluster" class="text-[10px] uppercase font-bold text-cyan-300 tracking-wider">CLUSTER</span>
+      </div>
+      <button id="btnCloseInspector" class="text-slate-400 hover:text-white text-base font-bold px-1">&times;</button>
+    </div>
+    <div id="inspectFileName" class="text-sm font-bold text-white mb-1 break-all">filename.ts</div>
+    <div id="inspectFullPath" class="text-[10px] text-slate-400 mb-3 break-all leading-normal">path/to/file</div>
+    
+    <div class="grid grid-cols-2 gap-2 mb-3 text-center">
+      <div class="bg-white/5 p-1.5 rounded border border-white/10">
+        <div class="text-[9px] text-slate-400">TOUCH COUNT</div>
+        <div id="inspectTouches" class="text-sm font-bold text-amber-400">1</div>
+      </div>
+      <div class="bg-white/5 p-1.5 rounded border border-white/10">
+        <div class="text-[9px] text-slate-400">LAST ACTION</div>
+        <div id="inspectActivity" class="text-[10px] font-bold text-cyan-300">READ</div>
+      </div>
+    </div>
+
+    <div id="inspectSnippetBox" class="code-syntax mb-3 text-[10px] max-h-32 overflow-y-auto">
+      // No snippet available
+    </div>
+
+    <div class="flex gap-2">
+      <button id="btnFocusNode" class="flex-1 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/80 py-1.5 rounded font-semibold text-[11px] transition">
+        Focus in 3D
+      </button>
+      <button id="btnHighlightNode" class="bg-white/10 hover:bg-white/15 text-slate-200 border border-white/20 px-3 py-1.5 rounded text-[11px] transition">
+        Pulse
+      </button>
+    </div>
+  </div>
+
+  <!-- FULL REASONING THOUGHT STREAM MODAL -->
+  <div id="thoughtModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md">
+    <div class="apple-glass w-[780px] max-w-[95vw] max-h-[85vh] rounded-2xl p-6 border border-cyan-500/50 shadow-2xl flex flex-col">
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+        <div class="flex items-center gap-2.5">
+          <span class="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_10px_#38bdf8] animate-ping"></span>
+          <span class="font-extrabold text-white text-base mono">AI COGNITION STREAM // REASONING ARCHIVE</span>
+        </div>
+        <button id="btnCloseThoughtModal" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+      </div>
+
+      <div id="thoughtModalList" class="flex-1 overflow-y-auto space-y-3 mono text-xs text-slate-200 pr-2">
+        <!-- Populated with full thought steps -->
+      </div>
+    </div>
+  </div>
+
+  <!-- AETHERIS 3D CONSTELLATION & WEBAUDIO ENGINE -->
+  <script>
+    // =========================================================================
+    // 1. CANVAS SETUP & RETINA RESOLUTION HANDLING
+    // =========================================================================
+    const canvas = document.getElementById('viewportCanvas');
+    const container = document.getElementById('canvasContainer');
+    const ctx = canvas.getContext('2d');
+
+    let width = 800;
+    let height = 600;
+
+    function resize() {
+      width = Math.max(300, Math.floor(window.innerWidth || (container && container.clientWidth) || 800));
+      height = Math.max(300, Math.floor(window.innerHeight || (container && container.clientHeight) || 600));
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+    }
+
+    if (window.ResizeObserver && container) {
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(container);
+    }
+    window.addEventListener('resize', resize);
+    window.addEventListener('DOMContentLoaded', resize);
+    window.addEventListener('load', resize);
+    setTimeout(resize, 50);
+    setTimeout(resize, 200);
+    resize();
+
+    // =========================================================================
+    // 2. PROCEDURAL SCI-FI WEB AUDIO SYNTHESIZER
+    // =========================================================================
+    let audioCtx = null;
+    let audioEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSciFiChirp(type = 'read') {
+      if (!audioEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'read') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1200, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+          gain.gain.setValueAtTime(0.04, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === 'write' || type === 'create') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(450, now);
+          osc.frequency.exponentialRampToValueAtTime(950, now + 0.08);
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } else if (type === 'thinking') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(554, now + 0.12);
+          gain.gain.setValueAtTime(0.03, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        } else if (type === 'shockwave') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(35, now + 0.35);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        } else {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(700, now);
+          osc.frequency.exponentialRampToValueAtTime(900, now + 0.04);
+          gain.gain.setValueAtTime(0.03, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        }
+      } catch (err) {}
+    }
+
+    const btnAudioToggle = document.getElementById('btnAudioToggle');
+    btnAudioToggle.addEventListener('click', () => {
+      audioEnabled = !audioEnabled;
+      document.getElementById('audioLabel').textContent = audioEnabled ? 'AUDIO FX' : 'SFX MUTED';
+      document.getElementById('audioIcon').textContent = audioEnabled ? '🔊' : '🔇';
+      if (audioEnabled) {
+        initAudio();
+        playSciFiChirp('read');
+      }
+    });
+
+    // =========================================================================
+    // 3. TRUE 3D ORBITAL CAMERA ENGINE & CONTROLS
+    // =========================================================================
+    let camera = {
+      yaw: 0.55,          // Azimuth angle around Y axis (0 to 2*PI)
+      pitch: 0.32,        // Elevation angle (-PI/2 to PI/2)
+      dist: 760,          // Distance from 3D center
+      panX: 0,            // Screen-space pan offset X
+      panY: 0,            // Screen-space pan offset Y
+      lookAtX: 0,         // Current lookAt target X
+      lookAtY: 0,         // Current lookAt target Y
+      lookAtZ: 0,         // Current lookAt target Z
+      targetDist: 760,
+      targetYaw: 0.55,
+      targetPitch: 0.32,
+      targetPanX: 0,
+      targetPanY: 0,
+      targetLookAtX: 0,
+      targetLookAtY: 0,
+      targetLookAtZ: 0,
+      fov: 680
+    };
+
+    let trackingNode = null; // When focused, the camera continuously tracks this node!
+
+
+    const trackingBanner = document.getElementById('trackingBanner');
+    const trackingNodeName = document.getElementById('trackingNodeName');
+    const btnClearTracking = document.getElementById('btnClearTracking');
+
+    function showTrackingUI(node) {
+      if (!trackingBanner || !trackingNodeName) return;
+      trackingNodeName.textContent = node.shortPath || node.name;
+      trackingBanner.classList.remove('hidden');
+    }
+
+    function hideTrackingUI() {
+      if (!trackingBanner) return;
+      trackingBanner.classList.add('hidden');
+    }
+
+    if (btnClearTracking) {
+      btnClearTracking.addEventListener('click', () => {
+        trackingNode = null;
+        camera.targetLookAtX = 0;
+        camera.targetLookAtY = 0;
+        camera.targetLookAtZ = 0;
+        hideTrackingUI();
+        playSciFiChirp('click');
+      });
+    }
+
+    let autoOrbit = true;
+    let autoOrbitSpeed = 0.0022;
+
+    let isOrbiting = false;
+    let isPanning = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let hoveredNode = null;
+    let selectedNode = null;
+
+    // Camera presets
+    function setCameraPreset(preset) {
+      trackingNode = null;
+      hideTrackingUI();
+      camera.targetLookAtX = 0;
+      camera.targetLookAtY = 0;
+      camera.targetLookAtZ = 0;
+      if (preset === 'isometric') {
+        camera.targetPitch = 0.61;
+        camera.targetYaw = 0.785;
+        camera.targetDist = 760;
+        camera.targetPanX = 0;
+        camera.targetPanY = 0;
+      } else if (preset === 'top') {
+        camera.targetPitch = 1.48;
+        camera.targetYaw = 0;
+        camera.targetDist = 840;
+        camera.targetPanX = 0;
+        camera.targetPanY = 0;
+      } else if (preset === 'side') {
+        camera.targetPitch = 0.05;
+        camera.targetYaw = 1.57;
+        camera.targetDist = 800;
+        camera.targetPanX = 0;
+        camera.targetPanY = 0;
+      } else if (preset === 'focusActive') {
+        focusOnActiveNode();
+      } else if (preset === 'reset') {
+        camera.targetPitch = 0.32;
+        camera.targetYaw = 0.55;
+        camera.targetDist = 760;
+        camera.targetPanX = 0;
+        camera.targetPanY = 0;
+      }
+      playSciFiChirp('click');
+      document.getElementById('cameraDropdown').classList.add('hidden');
+    }
+
+    document.getElementById('btnCameraMenu').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('cameraDropdown').classList.toggle('hidden');
+    });
+    window.addEventListener('click', () => {
+      document.getElementById('cameraDropdown').classList.add('hidden');
+    });
+
+    const btnAutoOrbit = document.getElementById('btnAutoOrbit');
+    btnAutoOrbit.addEventListener('click', () => {
+      autoOrbit = !autoOrbit;
+      if (autoOrbit) {
+        camera.targetYaw = camera.yaw;
+      }
+      document.getElementById('orbitLabel').textContent = autoOrbit ? '360° ORBIT: ON' : '360° ORBIT: OFF';
+      btnAutoOrbit.className = autoOrbit 
+        ? 'bg-white/5 hover:bg-white/10 text-cyan-300 border border-cyan-500/80 px-2.5 py-1 rounded mono text-[11px] transition flex items-center gap-1.5 shadow-[0_0_10px_rgba(6,182,212,0.25)]'
+        : 'bg-white/5 hover:bg-white/10 text-slate-400 border border-white/15 px-2.5 py-1 rounded mono text-[11px] transition flex items-center gap-1.5';
+      playSciFiChirp('click');
+    });
+
+    // Mouse / Pointer Controls for 360° 3D Orbit & Pan
+    canvas.addEventListener('mousedown', (e) => {
+      initAudio();
+      if (e.button === 2 || e.shiftKey) {
+        isPanning = true;
+        dragStartX = e.clientX - camera.panX;
+        dragStartY = e.clientY - camera.panY;
+      } else if (e.button === 0) {
+        isOrbiting = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    window.addEventListener('mousemove', (e) => {
+      if (isOrbiting) {
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        camera.yaw += dx * 0.007;
+        camera.pitch = Math.max(-1.50, Math.min(1.50, camera.pitch - dy * 0.007));
+        camera.targetYaw = camera.yaw;
+        camera.targetPitch = camera.pitch;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      } else if (isPanning) {
+        camera.panX = e.clientX - dragStartX;
+        camera.panY = e.clientY - dragStartY;
+        camera.targetPanX = camera.panX;
+        camera.targetPanY = camera.panY;
+      }
+
+      // 3D Raycast / Hit-test for hovering nodes
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      let found = null;
+      let minDepth = Infinity;
+
+      for (const n of nodes) {
+        if (!n._proj) continue;
+        const dx = n._proj.x - mouseX;
+        const dy = n._proj.y - mouseY;
+        const radius = Math.max(10, (n.size + 4) * n._proj.depthFactor);
+        if (dx * dx + dy * dy < radius * radius) {
+          if (n._proj.z < minDepth) {
+            minDepth = n._proj.z;
+            found = n;
+          }
+        }
+      }
+
+      hoveredNode = found;
+      canvas.style.cursor = found ? 'pointer' : (isOrbiting || isPanning ? 'grabbing' : 'grab');
+    });
+
+    window.addEventListener('mouseup', () => {
+      isOrbiting = false;
+      isPanning = false;
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 0.90 : 1.11;
+      camera.targetDist = Math.max(220, Math.min(2600, camera.targetDist * zoomFactor));
+    });
+
+    // Touch Support for Mobile / Tablets
+    let touchStartDist = 0;
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        isOrbiting = true;
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        isOrbiting = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchStartDist = Math.sqrt(dx * dx + dy * dy);
+      }
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (isOrbiting && e.touches.length === 1) {
+        const dx = e.touches[0].clientX - lastMouseX;
+        const dy = e.touches[0].clientY - lastMouseY;
+        camera.yaw += dx * 0.007;
+        camera.pitch = Math.max(-1.50, Math.min(1.50, camera.pitch - dy * 0.007));
+        camera.targetYaw = camera.yaw;
+        camera.targetPitch = camera.pitch;
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        const factor = touchStartDist / (d || 1);
+        camera.targetDist = Math.max(220, Math.min(2600, camera.targetDist * factor));
+        touchStartDist = d;
+      }
+    });
+
+    canvas.addEventListener('touchend', () => { isOrbiting = false; });
+
+    // Node Click & Inspector trigger
+    canvas.addEventListener('click', (e) => {
+      if (hoveredNode) {
+        openNodeInspector(hoveredNode);
+        flyCameraToPoint(hoveredNode.x, hoveredNode.y, hoveredNode.z, hoveredNode);
+        playSciFiChirp('click');
+      }
+    });
+
+    // Color conversion helper for semi-transparent luminous 3D nodes
+    function hexToRgba(hex, alpha = 1) {
+      if (!hex || typeof hex !== 'string') return `rgba(56, 189, 248, ${alpha})`;
+      let c = hex.replace('#', '').trim();
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      if (c.length === 6) {
+        const num = parseInt(c, 16);
+        return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+      }
+      return hex;
+    }
+
+    // 3D Point Perspective Projection Function
+    function project3D(px, py, pz) {
+      const cx = width / 2;
+      const cy = height / 2;
+
+      // Translate point relative to dynamic camera target lookAt
+      const relX = px - camera.lookAtX;
+      const relY = py - camera.lookAtY;
+      const relZ = pz - camera.lookAtZ;
+
+      // Rotate around Y axis (yaw)
+      const cosY = Math.cos(camera.yaw);
+      const sinY = Math.sin(camera.yaw);
+      const x1 = relX * cosY + relZ * sinY;
+      const z1 = -relX * sinY + relZ * cosY;
+
+      // Rotate around X axis (pitch)
+      const cosP = Math.cos(camera.pitch);
+      const sinP = Math.sin(camera.pitch);
+      const y2 = relY * cosP - z1 * sinP;
+      const z2 = relY * sinP + z1 * cosP;
+
+      // Translate along camera viewing axis
+      const camZ = z2 + camera.dist;
+      if (camZ <= 20) return null; // Near clipping plane
+
+      // Perspective scale division
+      const scale = camera.fov / camZ;
+      const screenX = cx + x1 * scale + camera.panX;
+      const screenY = cy + y2 * scale + camera.panY;
+
+      return {
+        x: screenX,
+        y: screenY,
+        z: camZ,
+        scale: scale,
+        depthFactor: Math.min(2.4, Math.max(0.25, scale * 1.15))
+      };
+    }
+
+    // =========================================================================
+    // 4. DATA MODEL: 3D CLUSTERS, CONSTELLATIONS & ENERGY PACKETS
+    // =========================================================================
+    let nodes = [];
+    let edges = [];
+    const nodeMap = new Map();
+
+    const clusterColors = {
+      'core-engine': '#38bdf8',          // Electric Cyan
+      'webview': '#818cf8',              // Cyber Indigo
+      'adapters': '#f59e0b',             // Solar Amber
+      'brain-logs': '#10b981',            // Mint Emerald
+      'dashboard-ui': '#06b6d4',          // Neon Cyan
+      'terminal-exec': '#c084fc',        // Quantum Violet
+      'ai-activity-visualizer': '#38bdf8',// Sky Blue
+      'workspace': '#60a5fa',            // Azure
+      'antigravity-system': '#ec4899'    // Rose Pink
+    };
+
+    // 3D Centroids for Distinct Constellation Clusters (Wide Expansive Spherical Constellations)
+    const clusterCentroids = {
+      'core-engine': { cx: -320, cy: -80, cz: 140, rad: 160, name: 'CORE ENGINE' },
+      'webview': { cx: 320, cy: -110, cz: -110, rad: 150, name: 'WEBVIEW UI' },
+      'adapters': { cx: -310, cy: 150, cz: -140, rad: 150, name: 'ADAPTERS' },
+      'brain-logs': { cx: 140, cy: 230, cz: 150, rad: 140, name: 'BRAIN LOGS' },
+      'dashboard-ui': { cx: 0, cy: -280, cz: 140, rad: 140, name: 'DASHBOARD' },
+      'ai-activity-visualizer': { cx: 290, cy: 150, cz: 110, rad: 150, name: 'WORKSPACE' },
+      'terminal-exec': { cx: -130, cy: 260, cz: -120, rad: 140, name: 'TERMINAL' },
+      'workspace': { cx: 230, cy: 50, cz: -230, rad: 150, name: 'WORKSPACE' },
+      'antigravity-system': { cx: -150, cy: -230, cz: -150, rad: 130, name: 'SYSTEM' }
+    };
+
+    // Moving Signal Packets along Edges
+    let energyPackets = [];
+
+    function spawnEnergyPacket(sourceNode, targetNode, color) {
+      if (!sourceNode || !targetNode) return;
+      energyPackets.push({
+        source: sourceNode,
+        target: targetNode,
+        progress: 0,
+        speed: 0.016 + Math.random() * 0.016,
+        color: color || '#00f0ff'
+      });
+      if (energyPackets.length > 30) energyPackets.shift();
+    }
+
+    function addOrUpdateNode(nodeData) {
+      let existing = nodeMap.get(nodeData.id);
+      const cluster = nodeData.cluster || 'workspace';
+      const cInfo = clusterCentroids[cluster] || { cx: 0, cy: 0, cz: 0, rad: 160 };
+
+      if (!existing) {
+        // Compute 3D coordinate around cluster spherical center
+        let tx = nodeData.targetX ?? nodeData.x;
+        let ty = nodeData.targetY ?? nodeData.y;
+        let tz = nodeData.targetZ ?? nodeData.z;
+
+        if (tx === undefined || ty === undefined || tz === undefined) {
+          const theta = Math.random() * Math.PI * 2;
+          const phi = (Math.random() - 0.5) * Math.PI;
+          const dist = Math.pow(Math.random(), 0.7) * cInfo.rad;
+          tx = cInfo.cx + Math.cos(theta) * Math.cos(phi) * dist;
+          ty = cInfo.cy + Math.sin(phi) * dist;
+          tz = cInfo.cz + Math.sin(theta) * Math.cos(phi) * dist;
+        }
+
+        const n = {
+          id: nodeData.id,
+          name: nodeData.name || (nodeData.id.includes('/') ? nodeData.id.split('/').pop() : nodeData.id),
+          fullPath: nodeData.fullPath || nodeData.id,
+          shortPath: nodeData.shortPath || nodeData.name || nodeData.id,
+          cluster,
+          activity: nodeData.activity || 'idle',
+          color: nodeData.color || clusterColors[cluster] || '#38bdf8',
+          size: nodeData.size || 6,
+          touchCount: nodeData.touchCount || 1,
+          x: tx,
+          y: ty,
+          z: tz,
+          targetX: tx,
+          targetY: ty,
+          targetZ: tz,
+          vx: 0,
+          vy: 0,
+          vz: 0,
+          pulse: Math.PI * 2,
+          snippet: nodeData.snippet || ''
+        };
+        nodeMap.set(n.id, n);
+        nodes.push(n);
+
+        // Auto-connect to 1-2 peers in the same cluster to form a rich constellation
+        const peers = nodes.filter(p => p.cluster === cluster && p !== n);
+        if (peers.length > 0) {
+          const sampleCount = Math.min(2, peers.length);
+          for (let s = 0; s < sampleCount; s++) {
+            const peer = peers[(Math.floor(Math.random() * peers.length) + s) % peers.length];
+            if (!edges.some(e => (e.source === peer.id && e.target === n.id) || (e.source === n.id && e.target === peer.id))) {
+              edges.push({ source: peer.id, target: n.id, weight: 1, cluster });
+            }
+          }
+        }
+
+        updateClusterDirectory();
+        return n;
+      } else {
+        existing.touchCount = (existing.touchCount || 0) + 1;
+        existing.pulse = Math.PI * 2;
+        if (nodeData.color) existing.color = nodeData.color;
+        if (nodeData.activity) existing.activity = nodeData.activity;
+        existing.size = Math.min(14, existing.size + 0.6);
+        if (nodeData.snippet) existing.snippet = nodeData.snippet;
+        if (nodeData.targetX !== undefined) existing.targetX = nodeData.targetX;
+        if (nodeData.targetY !== undefined) existing.targetY = nodeData.targetY;
+        if (nodeData.targetZ !== undefined) existing.targetZ = nodeData.targetZ;
+
+        // Spawn signal packet to random peer
+        const peer = nodes[Math.floor(Math.random() * nodes.length)];
+        if (peer && peer !== existing) spawnEnergyPacket(existing, peer, existing.color);
+
+        return existing;
+      }
+    }
+
+    // Seed Data: Instant Rich 3D Constellation Mesh
+    const SEED_NODES_3D = [
+      { id: 'src/extension.ts', name: 'extension.ts', cluster: 'core-engine', activity: 'file_write', color: '#f59e0b', size: 9, touchCount: 14, targetX: -300, targetY: -70, targetZ: 120, snippet: 'export function activate(context) {\n  const normalizer = new EventNormalizer();\n  const db = new SqliteDatabase();\n}' },
+      { id: 'src/adapters/antigravity.adapter.ts', name: 'antigravity.adapter.ts', cluster: 'adapters', activity: 'file_write', color: '#f59e0b', size: 9, touchCount: 11, targetX: -320, targetY: 130, targetZ: -120, snippet: 'export class AntigravityAdapter {\n  tailTranscript(path) {\n    return fs.watch(path);\n  }\n}' },
+      { id: 'src/adapters/http.adapter.ts', name: 'http.adapter.ts', cluster: 'adapters', activity: 'file_read', color: '#38bdf8', size: 7, touchCount: 5, targetX: -350, targetY: 100, targetZ: -100, snippet: 'export class HttpAdapter {\n  async broadcast(event) {\n    await fetch("/api/events", { body: JSON.stringify(event) });\n  }\n}' },
+      { id: 'src/pipeline/normalizer.ts', name: 'normalizer.ts', cluster: 'core-engine', activity: 'file_read', color: '#38bdf8', size: 8, touchCount: 6, targetX: -330, targetY: -110, targetZ: 150, snippet: 'export class EventNormalizer {\n  normalize(raw) {\n    return ActivityEventSchema.parse(raw);\n  }\n}' },
+      { id: 'src/storage/database.ts', name: 'database.ts', cluster: 'core-engine', activity: 'file_read', color: '#38bdf8', size: 7, touchCount: 4, targetX: -270, targetY: -110, targetZ: 100, snippet: 'export class SqliteDatabase {\n  exec(sql) { return this.db.run(sql); }\n}' },
+      { id: 'src/webview/App.tsx', name: 'App.tsx', cluster: 'webview', activity: 'file_read', color: '#818cf8', size: 9, touchCount: 7, targetX: 300, targetY: -90, targetZ: -100, snippet: 'export const App = () => {\n  return <ConstellationGraph nodes={nodes} />;\n};' },
+      { id: 'src/webview/components/ConstellationGraph.tsx', name: 'ConstellationGraph.tsx', cluster: 'webview', activity: 'file_read', color: '#818cf8', size: 8, touchCount: 5, targetX: 340, targetY: -60, targetZ: -70, snippet: 'export const ConstellationGraph = ({ nodes }) => {\n  const canvasRef = useRef(null);\n};' },
+      { id: 'src/webview/components/TraceCards.tsx', name: 'TraceCards.tsx', cluster: 'webview', activity: 'file_read', color: '#818cf8', size: 7, touchCount: 4, targetX: 290, targetY: -140, targetZ: -130, snippet: 'export const TraceCards = ({ events }) => {\n  return events.map(e => <TraceCard event={e} />);\n};' },
+      { id: 'live_bridge_server.mjs', name: 'live_bridge_server.mjs', cluster: 'ai-activity-visualizer', activity: 'file_create', color: '#10b981', size: 10, touchCount: 16, targetX: 280, targetY: 130, targetZ: 100, snippet: 'const server = http.createServer((req, res) => {\n  if (req.url === "/api/stream") initSSE(res);\n});' },
+      { id: 'agent_brain_dashboard.html', name: 'agent_brain_dashboard.html', cluster: 'dashboard-ui', activity: 'file_write', color: '#06b6d4', size: 11, touchCount: 19, targetX: 0, targetY: -260, targetZ: 140, snippet: 'function project3D(x, y, z) {\n  const scale = fov / (camZ);\n  return { x: cx + x * scale, y: cy + y * scale };\n}' },
+      { id: 'transcript.jsonl', name: 'transcript.jsonl', cluster: 'brain-logs', activity: 'file_read', color: '#10b981', size: 10, touchCount: 22, targetX: 130, targetY: 210, targetZ: 150, snippet: '{"type":"ai_thinking","thinking":"Analyzing 3D cluster projection..."}' },
+      { id: 'tests/adapters.test.ts', name: 'adapters.test.ts', cluster: 'core-engine', activity: 'file_read', color: '#38bdf8', size: 7, touchCount: 4, targetX: -240, targetY: -70, targetZ: 130, snippet: 'it("emits events correctly", () => {\n  expect(events.length).toBeGreaterThan(0);\n});' },
+      { id: 'package.json', name: 'package.json', cluster: 'ai-activity-visualizer', activity: 'file_read', color: '#38bdf8', size: 7, touchCount: 3, targetX: 240, targetY: 170, targetZ: 110, snippet: '{\n  "name": "ai-activity-visualizer",\n  "version": "1.0.0"\n}' },
+      { id: 'cmd://npm test', name: 'npm test', cluster: 'terminal-exec', activity: 'terminal_command', color: '#c084fc', size: 8, touchCount: 6, targetX: -110, targetY: 240, targetZ: -110, snippet: 'vitest run\n✓ 24 tests passed (24)' },
+      { id: 'cmd://git status', name: 'git status', cluster: 'terminal-exec', activity: 'terminal_command', color: '#c084fc', size: 7, touchCount: 4, targetX: -150, targetY: 220, targetZ: -80, snippet: 'On branch master\nmodified: agent_brain_dashboard.html' }
+    ];
+
+    const SEED_EDGES_3D = [
+      { source: 'src/extension.ts', target: 'src/adapters/antigravity.adapter.ts', weight: 4 },
+      { source: 'src/extension.ts', target: 'src/adapters/http.adapter.ts', weight: 2 },
+      { source: 'src/extension.ts', target: 'src/pipeline/normalizer.ts', weight: 3 },
+      { source: 'src/pipeline/normalizer.ts', target: 'src/storage/database.ts', weight: 2 },
+      { source: 'src/extension.ts', target: 'src/webview/App.tsx', weight: 3 },
+      { source: 'src/webview/App.tsx', target: 'src/webview/components/ConstellationGraph.tsx', weight: 3 },
+      { source: 'src/webview/App.tsx', target: 'src/webview/components/TraceCards.tsx', weight: 2 },
+      { source: 'live_bridge_server.mjs', target: 'agent_brain_dashboard.html', weight: 5 },
+      { source: 'live_bridge_server.mjs', target: 'transcript.jsonl', weight: 6 },
+      { source: 'src/adapters/antigravity.adapter.ts', target: 'transcript.jsonl', weight: 5 },
+      { source: 'src/adapters/antigravity.adapter.ts', target: 'tests/adapters.test.ts', weight: 2 },
+      { source: 'cmd://npm test', target: 'tests/adapters.test.ts', weight: 3 },
+      { source: 'agent_brain_dashboard.html', target: 'src/webview/App.tsx', weight: 2 }
+    ];
+
+    SEED_NODES_3D.forEach(n => addOrUpdateNode(n));
+    edges = [...SEED_EDGES_3D];
+
+    // Seed initial energy packets
+    edges.slice(0, 6).forEach(e => {
+      const n1 = nodeMap.get(e.source);
+      const n2 = nodeMap.get(e.target);
+      if (n1 && n2) spawnEnergyPacket(n1, n2, n1.color);
+    });
+
+    // 3D Gyroscope and Diamond Vertices for Galactic Central Reactor
+    let gyroAngleX = 0;
+    let gyroAngleY = 0;
+    let gyroAngleZ = 0;
+    let corePulse = 0;
+
+    const octaVertices3D = [
+      { x: 0, y: -70, z: 0 },
+      { x: 50, y: 0, z: 50 },
+      { x: -50, y: 0, z: 50 },
+      { x: -50, y: 0, z: -50 },
+      { x: 50, y: 0, z: -50 },
+      { x: 0, y: 70, z: 0 }
+    ];
+    const octaEdges3D = [
+      [0,1], [0,2], [0,3], [0,4],
+      [1,2], [2,3], [3,4], [4,1],
+      [5,1], [5,2], [5,3], [5,4]
+    ];
+
+    // 3D Orbital Comets with trails
+    const comets3D = [
+      { angle: 0, speed: 0.011, radA: 420, radB: 260, tiltX: 0.4, tiltZ: 0.3, color: '#00f0ff', trail: [] },
+      { angle: Math.PI * 0.8, speed: 0.008, radA: 360, radB: 300, tiltX: -0.5, tiltZ: 0.6, color: '#f59e0b', trail: [] },
+      { angle: Math.PI * 1.4, speed: 0.013, radA: 280, radB: 380, tiltX: 0.7, tiltZ: -0.4, color: '#10b981', trail: [] }
+    ];
+
+    // Distant 3D Background Starfield
+    const backgroundStars3D = [];
+    for (let i = 0; i < 140; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = (Math.random() - 0.5) * Math.PI;
+      const dist = 1200 + Math.random() * 800;
+      backgroundStars3D.push({
+        x: Math.cos(theta) * Math.cos(phi) * dist,
+        y: Math.sin(phi) * dist,
+        z: Math.sin(theta) * Math.cos(phi) * dist,
+        size: Math.random() * 1.5 + 0.5,
+        alpha: Math.random() * 0.6 + 0.2
+      });
+    }
+
+    // =========================================================================
+    // 5. 60 FPS TRUE 3D RENDER ENGINE (DEPTH-SORTED PAINTER'S ALGORITHM)
+    // =========================================================================
+    let lastFrameTime = performance.now();
+    let frameCount = 0;
+    let fpsTimer = performance.now();
+
+    function render(now) {
+      const dt = (now - lastFrameTime) / 1000;
+      lastFrameTime = now;
+
+      // FPS Measurement
+      frameCount++;
+      if (now - fpsTimer >= 800) {
+        const fps = Math.round((frameCount * 1000) / (now - fpsTimer));
+        document.getElementById('fpsMeter').textContent = `${fps} FPS`;
+        document.getElementById('fpsBar').style.width = `${Math.min(100, (fps / 60) * 100)}%`;
+        frameCount = 0;
+        fpsTimer = now;
+      }
+
+      // Continuous Node Tracking: smoothly update lookAt target to focused node
+      if (trackingNode) {
+        camera.targetLookAtX = trackingNode.x;
+        camera.targetLookAtY = trackingNode.y;
+        camera.targetLookAtZ = trackingNode.z;
+      }
+
+      // Smooth lookAt target interpolation
+      camera.lookAtX += (camera.targetLookAtX - camera.lookAtX) * 0.10;
+      camera.lookAtY += (camera.targetLookAtY - camera.lookAtY) * 0.10;
+      camera.lookAtZ += (camera.targetLookAtZ - camera.lookAtZ) * 0.10;
+
+      // Smooth Camera distance and pan interpolation
+      camera.dist += (camera.targetDist - camera.dist) * 0.12;
+      camera.panX += (camera.targetPanX - camera.panX) * 0.12;
+      camera.panY += (camera.targetPanY - camera.panY) * 0.12;
+
+      // Auto-Orbit: advance targetYaw smoothly when enabled
+      if (autoOrbit && !isOrbiting) {
+        camera.targetYaw = (camera.targetYaw + autoOrbitSpeed) % (Math.PI * 2);
+      }
+
+      // Shortest-path angular delta wrapping for yaw to prevent wild spinning bug
+      let deltaYaw = (camera.targetYaw - camera.yaw) % (Math.PI * 2);
+      if (deltaYaw > Math.PI) deltaYaw -= Math.PI * 2;
+      if (deltaYaw < -Math.PI) deltaYaw += Math.PI * 2;
+      camera.yaw += deltaYaw * 0.10;
+      camera.yaw = (camera.yaw % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+
+      // Pitch interpolation (clamped between -1.48 and 1.48 radians)
+      camera.targetPitch = Math.max(-1.48, Math.min(1.48, camera.targetPitch));
+      camera.pitch += (camera.targetPitch - camera.pitch) * 0.10;
+
+      // Update orientation HUD
+      document.getElementById('telemetryPitch').textContent = `${Math.round((camera.pitch * 180) / Math.PI)}°`;
+      document.getElementById('telemetryYaw').textContent = `${Math.round((camera.yaw * 180) / Math.PI)}°`;
+      document.getElementById('telemetryZoom').textContent = `${(760 / camera.dist).toFixed(1)}x`;
+
+      // Clear Canvas
+      ctx.clearRect(0, 0, width, height);
+
+      // Physics Simulation for 3D Nodes
+      const spring = 0.0035;
+      const damping = 0.94;
+
+      for (const n of nodes) {
+        n.vx += (n.targetX - n.x) * spring;
+        n.vy += (n.targetY - n.y) * spring;
+        n.vz += (n.targetZ - n.z) * spring;
+
+        n.vx *= damping;
+        n.vy *= damping;
+        n.vz *= damping;
+
+        n.x += n.vx;
+        n.y += n.vy;
+        n.z += n.vz;
+
+        if (n.pulse > 0) n.pulse = Math.max(0, n.pulse - 0.045);
+
+        // Pre-project node into 2D screen space
+        n._proj = project3D(n.x, n.y, n.z);
+      }
+
+      // Render Elements Buffer for Depth Sorting
+      const drawQueue = [];
+
+      // A. Distant 3D Background Starfield
+      backgroundStars3D.forEach(star => {
+        const p = project3D(star.x, star.y, star.z);
+        if (p) {
+          drawQueue.push({
+            type: 'star',
+            z: p.z,
+            p: p,
+            size: star.size * p.depthFactor,
+            alpha: star.alpha
+          });
+        }
+      });
+
+      // B. Ground 3D Coordinate Plane / Latitude Rings
+      const ringRadii = [180, 360, 540];
+      ringRadii.forEach(r => {
+        const segs = 36;
+        const pts = [];
+        for (let i = 0; i <= segs; i++) {
+          const a = (i / segs) * Math.PI * 2;
+          pts.push({ x: Math.cos(a) * r, y: 0, z: Math.sin(a) * r });
+        }
+        drawQueue.push({
+          type: 'groundRing',
+          z: camera.dist,
+          pts: pts
+        });
+      });
+
+      // C. 3D Gyroscope Gimbal Rings & Octahedron Core
+      gyroAngleX += 0.012;
+      gyroAngleY += 0.016;
+      gyroAngleZ += 0.009;
+      corePulse += 0.035;
+
+      const reactorScale = 1.0 + Math.sin(corePulse) * 0.08;
+
+      // Project Octahedron Crystal Core Vertices
+      const projectedOcta = octaVertices3D.map(v => {
+        const cosA = Math.cos(gyroAngleY), sinA = Math.sin(gyroAngleY);
+        const rx = v.x * cosA - v.z * sinA;
+        const rz = v.x * sinA + v.z * cosA;
+        const ry = v.y;
+        return project3D(rx * reactorScale, ry * reactorScale, rz * reactorScale);
+      });
+
+      drawQueue.push({
+        type: 'coreDiamond',
+        z: camera.dist, // at scene center
+        projected: projectedOcta,
+        reactorScale
+      });
+
+      // D. 3D Cluster Bounding Meshes (TRUE 3D GEOMETRIC CONSTELLATION CAGES)
+      const showHulls = document.getElementById('chkClusterHulls').checked;
+      if (showHulls) {
+        const clusterGroups = new Map();
+        for (const n of nodes) {
+          if (!clusterGroups.has(n.cluster)) clusterGroups.set(n.cluster, []);
+          clusterGroups.get(n.cluster).push(n);
+        }
+
+        clusterGroups.forEach((cNodes, cName) => {
+          if (cNodes.length >= 2) {
+            const cInfo = clusterCentroids[cName] || { cx: 0, cy: 0, cz: 0, rad: 150 };
+            const cProj = project3D(cInfo.cx, cInfo.cy, cInfo.cz);
+            if (cProj) {
+              drawQueue.push({
+                type: 'clusterHull',
+                z: cProj.z,
+                name: cInfo.name || cName,
+                color: clusterColors[cName] || '#38bdf8',
+                proj: cProj,
+                centroid: cInfo,
+                nodes: cNodes
+              });
+            }
+          }
+        });
+      }
+
+      // E. Luminous Connections Web (Intra-cluster + Inter-cluster + Core Rays)
+      const showConnections = document.getElementById('chkConnections').checked;
+      if (showConnections) {
+        for (const e of edges) {
+          const n1 = nodeMap.get(e.source);
+          const n2 = nodeMap.get(e.target);
+          if (n1 && n2 && n1._proj && n2._proj) {
+            const avgZ = (n1._proj.z + n2._proj.z) / 2;
+            const isHighlighted = (n1 === hoveredNode || n2 === hoveredNode || n1 === selectedNode || n2 === selectedNode || n1 === trackingNode || n2 === trackingNode);
+            drawQueue.push({
+              type: 'edge',
+              z: avgZ,
+              n1: n1,
+              n2: n2,
+              color: n1.color || clusterColors[n1.cluster] || '#38bdf8',
+              weight: e.weight || 1,
+              highlight: isHighlighted
+            });
+          }
+        }
+      }
+
+      // F. Signal Energy Packets traveling on connections
+      for (let i = energyPackets.length - 1; i >= 0; i--) {
+        const pkt = energyPackets[i];
+        pkt.progress += pkt.speed;
+        if (pkt.progress >= 1.0) {
+          energyPackets.splice(i, 1);
+          continue;
+        }
+        if (pkt.source._proj && pkt.target._proj) {
+          const px = pkt.source.x + (pkt.target.x - pkt.source.x) * pkt.progress;
+          const py = pkt.source.y + (pkt.target.y - pkt.source.y) * pkt.progress;
+          const pz = pkt.source.z + (pkt.target.z - pkt.source.z) * pkt.progress;
+          const proj = project3D(px, py, pz);
+          if (proj) {
+            drawQueue.push({
+              type: 'energyPacket',
+              z: proj.z,
+              proj: proj,
+              color: pkt.color
+            });
+          }
+        }
+      }
+
+      // G. 3D Orbital Comets
+      comets3D.forEach(c => {
+        c.angle += c.speed;
+        const u = Math.cos(c.angle) * c.radA;
+        const v = Math.sin(c.angle) * c.radB;
+        const cx = u;
+        const cy = v * Math.cos(c.tiltX);
+        const cz = v * Math.sin(c.tiltX);
+
+        const proj = project3D(cx, cy, cz);
+        if (proj) {
+          c.trail.push({ x: proj.x, y: proj.y, z: proj.z, time: now });
+          if (c.trail.length > 18) c.trail.shift();
+
+          drawQueue.push({
+            type: 'comet',
+            z: proj.z,
+            proj: proj,
+            color: c.color,
+            trail: [...c.trail]
+          });
+        }
+      });
+
+      // H. 3D Nodes
+      const attentionOnly = document.getElementById('chkAttention').checked;
+      for (const n of nodes) {
+        if (!n._proj) continue;
+        if (attentionOnly && n.pulse <= 0 && n.touchCount <= 1) continue;
+
+        drawQueue.push({
+          type: 'node',
+          z: n._proj.z,
+          node: n
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // Depth Sort: Draw farthest (large Z) first, nearest (small Z) last!
+      // -----------------------------------------------------------------------
+      drawQueue.sort((a, b) => b.z - a.z);
+
+      // Execute Canvas 2D Draw Commands
+      const showLabels = document.getElementById('chkLabels').checked;
+
+      for (const item of drawQueue) {
+        if (item.type === 'star') {
+          ctx.fillStyle = `rgba(226, 232, 240, ${item.alpha})`;
+          ctx.beginPath();
+          ctx.arc(item.p.x, item.p.y, item.size, 0, Math.PI * 2);
+          ctx.fill();
+
+        } else if (item.type === 'groundRing') {
+          ctx.strokeStyle = 'rgba(6, 182, 212, 0.09)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          let started = false;
+          for (const p of item.pts) {
+            const proj = project3D(p.x, p.y, p.z);
+            if (proj) {
+              if (!started) { ctx.moveTo(proj.x, proj.y); started = true; }
+              else ctx.lineTo(proj.x, proj.y);
+            }
+          }
+          ctx.stroke();
+
+        } else if (item.type === 'coreDiamond') {
+          // Inner Glowing Singularity Core
+          const coreProj = project3D(0, 0, 0);
+          if (coreProj) {
+            const coreRadius = 45 * coreProj.depthFactor * item.reactorScale;
+            const coreGrad = ctx.createRadialGradient(coreProj.x, coreProj.y, 2, coreProj.x, coreProj.y, coreRadius);
+            coreGrad.addColorStop(0, 'rgba(0, 240, 255, 0.90)');
+            coreGrad.addColorStop(0.35, 'rgba(245, 158, 11, 0.40)');
+            coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = coreGrad;
+            ctx.beginPath();
+            ctx.arc(coreProj.x, coreProj.y, coreRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Luminous Connection Rays to Cluster Centroids
+            Object.values(clusterCentroids).forEach(cc => {
+              const ccp = project3D(cc.cx, cc.cy, cc.cz);
+              if (ccp) {
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(coreProj.x, coreProj.y);
+                ctx.lineTo(ccp.x, ccp.y);
+                ctx.stroke();
+              }
+            });
+          }
+
+          // Octahedron Wireframe Edges
+          ctx.strokeStyle = 'rgba(0, 240, 255, 0.88)';
+          ctx.lineWidth = 1.8;
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 12;
+
+          octaEdges3D.forEach(([i, j]) => {
+            const p1 = item.projected[i];
+            const p2 = item.projected[j];
+            if (p1 && p2) {
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+            }
+          });
+          ctx.shadowBlur = 0;
+
+        } else if (item.type === 'clusterHull') {
+          // TRUE 3D CONSTELLATION MESH & GEOMETRIC CAGE
+          const color = item.color;
+          const cInfo = item.centroid;
+          const cProj = item.proj;
+
+          // 1. Tilted 3D Orbital Latitude Ring (32 Points in 3D Space)
+          const ringPts = 32;
+          const ringRad = cInfo.rad * 0.95;
+          ctx.strokeStyle = `${color}45`;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          let startedRing = false;
+          for (let i = 0; i <= ringPts; i++) {
+            const a = (i / ringPts) * Math.PI * 2;
+            const rx = cInfo.cx + Math.cos(a) * ringRad;
+            const ry = cInfo.cy + Math.sin(a) * ringRad * 0.4;
+            const rz = cInfo.cz + Math.sin(a) * ringRad * 0.9;
+            const rp = project3D(rx, ry, rz);
+            if (rp) {
+              if (!startedRing) { ctx.moveTo(rp.x, rp.y); startedRing = true; }
+              else ctx.lineTo(rp.x, rp.y);
+            }
+          }
+          ctx.stroke();
+
+          // 2. 3D Geometric Polyhedral Cage Vertices around cluster
+          const cageVerts = [
+            { x: cInfo.cx, y: cInfo.cy - cInfo.rad * 0.7, z: cInfo.cz },
+            { x: cInfo.cx + cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz + cInfo.rad * 0.7 },
+            { x: cInfo.cx - cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz + cInfo.rad * 0.7 },
+            { x: cInfo.cx - cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz - cInfo.rad * 0.7 },
+            { x: cInfo.cx + cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz - cInfo.rad * 0.7 },
+            { x: cInfo.cx, y: cInfo.cy + cInfo.rad * 0.7, z: cInfo.cz }
+          ].map(v => project3D(v.x, v.y, v.z));
+
+          ctx.strokeStyle = `${color}30`;
+          ctx.lineWidth = 1;
+          const cageEdges = [
+            [0,1],[0,2],[0,3],[0,4],
+            [1,2],[2,3],[3,4],[4,1],
+            [5,1],[5,2],[5,3],[5,4]
+          ];
+          cageEdges.forEach(([i, j]) => {
+            const vA = cageVerts[i];
+            const vB = cageVerts[j];
+            if (vA && vB) {
+              ctx.beginPath();
+              ctx.moveTo(vA.x, vA.y);
+              ctx.lineTo(vB.x, vB.y);
+              ctx.stroke();
+            }
+          });
+
+          // 3. Intra-cluster Constellation Web: Connect nodes within cluster with glowing lines
+          if (item.nodes.length >= 2) {
+            ctx.strokeStyle = `${color}55`;
+            ctx.lineWidth = 1.1;
+            for (let i = 0; i < item.nodes.length; i++) {
+              const nA = item.nodes[i]._proj;
+              // Connect to 2 neighbors to form rich constellation web
+              for (let step = 1; step <= 2 && i + step < item.nodes.length; step++) {
+                const nB = item.nodes[i + step]._proj;
+                if (nA && nB) {
+                  ctx.beginPath();
+                  ctx.moveTo(nA.x, nA.y);
+                  ctx.lineTo(nB.x, nB.y);
+                  ctx.stroke();
+                }
+              }
+            }
+          }
+
+          // 4. Floating 3D Billboard Cluster Header
+          ctx.save();
+          const badgeWidth = Math.max(90, item.name.length * 7.5 + 28) * cProj.depthFactor;
+          const badgeHeight = 20 * cProj.depthFactor;
+          const bx = cProj.x - badgeWidth / 2;
+          const by = cProj.y - (cInfo.rad * 0.85 * cProj.depthFactor) - badgeHeight - 6;
+
+          // High Contrast Badge Background
+          ctx.fillStyle = 'rgba(7, 14, 26, 0.92)';
+          ctx.strokeStyle = `${color}cc`;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.roundRect(bx, by, badgeWidth, badgeHeight, 5 * cProj.depthFactor);
+          ctx.fill();
+          ctx.stroke();
+
+          // Badge Text
+          const fontSize = Math.max(9, Math.round(10 * cProj.depthFactor));
+          ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${item.name} (${item.nodes.length})`, cProj.x, by + badgeHeight * 0.72);
+          ctx.restore();
+
+        } else if (item.type === 'edge') {
+          // EXPANSIVE LUMINOUS CONNECTIONS WEB (LIKE IN REFERENCE)
+          const p1 = item.n1._proj;
+          const p2 = item.n2._proj;
+          const isHigh = item.highlight;
+          const color = item.color;
+
+          if (isHigh) {
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2.4;
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 14;
+          } else {
+            ctx.strokeStyle = color ? `${color}88` : 'rgba(56, 189, 248, 0.65)';
+            ctx.lineWidth = Math.max(0.8, 1.2 * item.n1._proj.depthFactor);
+          }
+
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+        } else if (item.type === 'energyPacket') {
+          const p = item.proj;
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = item.color;
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3.5 * p.depthFactor, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+        } else if (item.type === 'comet') {
+          const p = item.proj;
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = item.color;
+          ctx.shadowBlur = 18;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 4.5 * p.depthFactor, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (item.trail.length > 2) {
+            ctx.strokeStyle = item.color;
+            ctx.lineWidth = 2.2 * p.depthFactor;
+            ctx.beginPath();
+            ctx.moveTo(item.trail[0].x, item.trail[0].y);
+            for (let t = 1; t < item.trail.length; t++) {
+              ctx.lineTo(item.trail[t].x, item.trail[t].y);
+            }
+            ctx.stroke();
+          }
+          ctx.shadowBlur = 0;
+
+        } else if (item.type === 'node') {
+          const n = item.node;
+          const p = n._proj;
+          const nodeRadius = n.size * p.depthFactor;
+          const isHovered = (n === hoveredNode);
+          const isSelected = (n === selectedNode || n === trackingNode);
+          const hasThoughtAura = (n._thoughtAura && n._thoughtAura > 0.02);
+          const r = isHovered ? nodeRadius * 1.35 : nodeRadius;
+
+          // Pulsing Activity Ripple Ring
+          if (n.pulse > 0) {
+            const rippleRadius = r + (Math.PI * 2 - n.pulse) * 6 * p.depthFactor;
+            const alpha = (n.pulse / (Math.PI * 2)) * 0.85;
+            ctx.strokeStyle = n.color === '#f59e0b' ? `rgba(245, 158, 11, ${alpha})` : `rgba(0, 240, 255, ${alpha})`;
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, rippleRadius, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Ambient Energy Aura when Antigravity is actively reasoning about this node
+          if (hasThoughtAura) {
+            const auraRad = r * (2.8 + Math.sin(now * 0.007) * 0.45);
+            const auraGrad = ctx.createRadialGradient(p.x, p.y, r * 0.25, p.x, p.y, auraRad);
+            auraGrad.addColorStop(0, `rgba(0, 240, 255, ${n._thoughtAura * 0.55})`);
+            auraGrad.addColorStop(0.5, `rgba(168, 85, 247, ${n._thoughtAura * 0.35})`);
+            auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = auraGrad;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, auraRad, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Energetic thought orbit ring with dash pattern
+            ctx.strokeStyle = `rgba(0, 240, 255, ${n._thoughtAura * 0.88})`;
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r * 1.9, now * 0.004, now * 0.004 + Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Orbiting energy spark
+            const sparkAngle = now * 0.008;
+            const sx = p.x + Math.cos(sparkAngle) * r * 1.9;
+            const sy = p.y + Math.sin(sparkAngle) * r * 1.9;
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 2.8 * p.depthFactor, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            n._thoughtAura *= 0.993; // Smooth decay
+          }
+
+          // 1. Soft Outer Holographic Halo
+          const haloGrad = ctx.createRadialGradient(p.x, p.y, r * 0.3, p.x, p.y, r * 2.3);
+          haloGrad.addColorStop(0, hexToRgba(n.color, (isHovered || n.pulse > 0 || hasThoughtAura) ? 0.45 : 0.18));
+          haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = haloGrad;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r * 2.3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 2. Semi-Transparent Translucent Node Core (Frosted Glass Effect: see-through nodes!)
+          const coreGrad = ctx.createRadialGradient(p.x - r * 0.28, p.y - r * 0.28, r * 0.05, p.x, p.y, r);
+          const baseAlpha = isHovered ? 0.65 : (isSelected ? 0.70 : (hasThoughtAura ? 0.60 : (n.pulse > 0 ? 0.55 : 0.32)));
+          coreGrad.addColorStop(0, `rgba(255, 255, 255, ${baseAlpha * 1.25})`);
+          coreGrad.addColorStop(0.45, hexToRgba(n.color, baseAlpha));
+          coreGrad.addColorStop(1, hexToRgba(n.color, baseAlpha * 0.55));
+
+          ctx.fillStyle = coreGrad;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 3. Luminous Outer Rim Ring
+          ctx.strokeStyle = isHovered ? '#ffffff' : hexToRgba(n.color, (isHovered || n.pulse > 0 || hasThoughtAura) ? 0.95 : 0.82);
+          ctx.lineWidth = isHovered ? 1.8 : Math.max(0.9, 1.2 * p.depthFactor);
+          ctx.shadowColor = hasThoughtAura ? '#00f0ff' : (n.color || '#38bdf8');
+          ctx.shadowBlur = (isHovered || n.pulse > 0 || isSelected || hasThoughtAura) ? 14 : 5;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          // 4. Subtle Specular Highlight Glint
+          ctx.fillStyle = `rgba(255, 255, 255, ${isHovered ? 0.85 : 0.60})`;
+          ctx.beginPath();
+          ctx.arc(p.x - r * 0.32, p.y - r * 0.32, Math.max(1, r * 0.22), 0, Math.PI * 2);
+          ctx.fill();
+
+          // Selection Reticle Box
+          if (isSelected) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.6;
+            ctx.strokeRect(p.x - r - 5, p.y - r - 5, (r + 5) * 2, (r + 5) * 2);
+          }
+
+          // SMART LABELING: Avoid clumped text in center!
+          // Only show node labels on hover, click, active pulse, search match, close zoom, or toggle
+          const shouldShowLabel = showLabels || isHovered || isSelected || (n.pulse > 0) || hasThoughtAura || (camera.dist < 460) || n._searchMatched;
+
+          if (shouldShowLabel) {
+            ctx.save();
+            const fontSize = Math.max(9, Math.round(10 * p.depthFactor));
+            const labelText = n.shortPath || n.name;
+            ctx.font = `${isHovered || n.pulse > 0 ? 'bold' : 'normal'} ${fontSize}px 'JetBrains Mono', monospace`;
+            
+            const textMetrics = ctx.measureText(labelText);
+            const boxPadding = 4;
+            const boxWidth = textMetrics.width + boxPadding * 2;
+            const boxHeight = fontSize + boxPadding * 1.5;
+            const bx = p.x + nodeRadius + 6;
+            const by = p.y - boxHeight / 2;
+
+            // Crisp dark pill background behind text so lines never make it unreadable
+            ctx.fillStyle = 'rgba(7, 14, 26, 0.90)';
+            ctx.strokeStyle = isHovered ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(bx, by, boxWidth, boxHeight, 3);
+            ctx.fill();
+            ctx.stroke();
+
+            // Text
+            ctx.fillStyle = isHovered ? '#ffffff' : (n.pulse > 0 ? n.color : '#e2e8f0');
+            ctx.textAlign = 'left';
+            ctx.fillText(labelText, bx + boxPadding, by + fontSize * 0.85);
+            ctx.restore();
+          }
+
+          // Search Spotlight Beacon Ring
+          if (n._searchMatched) {
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, nodeRadius + 7, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+
+    // =========================================================================
+    // 6. NODE INSPECTOR & CLUSTER DIRECTORY UI
+    // =========================================================================
+    const nodeInspectorModal = document.getElementById('nodeInspectorModal');
+    const inspectCluster = document.getElementById('inspectCluster');
+    const inspectColorDot = document.getElementById('inspectColorDot');
+    const inspectFileName = document.getElementById('inspectFileName');
+    const inspectFullPath = document.getElementById('inspectFullPath');
+    const inspectTouches = document.getElementById('inspectTouches');
+    const inspectActivity = document.getElementById('inspectActivity');
+    const inspectSnippetBox = document.getElementById('inspectSnippetBox');
+    const btnCloseInspector = document.getElementById('btnCloseInspector');
+    const btnFocusNode = document.getElementById('btnFocusNode');
+    const btnHighlightNode = document.getElementById('btnHighlightNode');
+
+    function openNodeInspector(n) {
+      selectedNode = n;
+      inspectCluster.textContent = n.cluster.toUpperCase();
+      inspectColorDot.style.backgroundColor = n.color;
+      inspectFileName.textContent = n.name;
+      inspectFullPath.textContent = n.fullPath;
+      inspectTouches.textContent = n.touchCount || 1;
+      inspectActivity.textContent = (n.activity || 'IDLE').toUpperCase();
+      
+      const snippetHtml = formatSyntaxHighlight(n.snippet || `// Activity: ${n.activity}\n// Path: ${n.fullPath}`);
+      inspectSnippetBox.innerHTML = snippetHtml;
+
+      nodeInspectorModal.classList.remove('hidden');
+    }
+
+    btnCloseInspector.addEventListener('click', () => {
+      nodeInspectorModal.classList.add('hidden');
+      selectedNode = null;
+    });
+
+    btnFocusNode.addEventListener('click', () => {
+      if (selectedNode) flyCameraToPoint(selectedNode.x, selectedNode.y, selectedNode.z, selectedNode);
+    });
+
+    btnHighlightNode.addEventListener('click', () => {
+      if (selectedNode) {
+        selectedNode.pulse = Math.PI * 2;
+        playSciFiChirp(selectedNode.activity === 'file_write' ? 'write' : 'read');
+      }
+    });
+
+    // Fly camera smoothly to target point, with dynamic node following and shortest arc
+    function flyCameraToPoint(tx, ty, tz, nodeToFollow = null) {
+      if (nodeToFollow) {
+        trackingNode = nodeToFollow;
+        showTrackingUI(nodeToFollow);
+        camera.targetDist = 420;
+      } else {
+        const matchingNode = nodes.find(n => n.x === tx && n.y === ty && n.z === tz) ||
+                             nodes.find(n => Math.hypot(n.x - tx, n.y - ty, n.z - tz) < 2);
+        if (matchingNode) {
+          trackingNode = matchingNode;
+          showTrackingUI(matchingNode);
+          camera.targetDist = 420;
+        } else {
+          trackingNode = null;
+          hideTrackingUI();
+          camera.targetDist = 480;
+        }
+      }
+
+      const distXZ = Math.sqrt(tx * tx + tz * tz) || 1;
+      let desiredYaw = Math.atan2(tx, tz);
+      camera.targetYaw = (desiredYaw % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      camera.targetPitch = 0.28;
+      camera.targetPanX = 0;
+      camera.targetPanY = 0;
+      playSciFiChirp('click');
+    }
+
+    function focusOnActiveNode() {
+      let mostActive = null;
+      let maxTouches = -1;
+      for (const n of nodes) {
+        if (n.touchCount > maxTouches) {
+          maxTouches = n.touchCount;
+          mostActive = n;
+        }
+      }
+      if (mostActive) {
+        flyCameraToPoint(mostActive.x, mostActive.y, mostActive.z);
+        openNodeInspector(mostActive);
+      }
+    }
+
+    function updateClusterDirectory() {
+      const clusterCounts = new Map();
+      nodes.forEach(n => {
+        clusterCounts.set(n.cluster, (clusterCounts.get(n.cluster) || 0) + 1);
+      });
+
+      const listContainer = document.getElementById('clusterList');
+      listContainer.innerHTML = '';
+
+      clusterCounts.forEach((count, cName) => {
+        const color = clusterColors[cName] || '#38bdf8';
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between px-2.5 py-1.5 rounded bg-[#09152a] border border-[#1b365d] text-xs cursor-pointer hover:border-cyan-400 hover:bg-[#0f2347] transition';
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full" style="background: ${color}; box-shadow: 0 0 6px ${color};"></span>
+            <span class="text-slate-100 mono text-[11px] font-semibold">${cName}</span>
+          </div>
+          <span class="text-cyan-400 mono text-[11px] font-bold">${count} files</span>
+        `;
+        row.addEventListener('click', () => {
+          const cInfo = clusterCentroids[cName];
+          if (cInfo) flyCameraToPoint(cInfo.cx, cInfo.cy, cInfo.cz);
+        });
+        listContainer.appendChild(row);
+      });
+
+      document.getElementById('statFiles').textContent = nodes.length;
+      document.getElementById('statFolders').textContent = clusterCounts.size;
+      document.getElementById('statEdges').textContent = edges.length;
+      document.getElementById('statTouched').textContent = nodes.filter(n => n.touchCount > 1).length || nodes.length;
+    }
+
+    // =========================================================================
+    // 7. MULTI-PROJECT & COGNITION DOCK ENGINE (NATIVE ANTIGRAVITY REASONING)
+    // =========================================================================
+    const CANDIDATE_PORTS = [5175, 5174, 5176];
+    let connectedPort = null;
+    let eventSource = null;
+
+    const bridgeStatusDot = document.getElementById('bridgeStatusDot');
+    const bridgeStatusText = document.getElementById('bridgeStatusText');
+    const btnBrowserLink = document.getElementById('btnBrowserLink');
+    const traceLog = document.getElementById('traceLog');
+    const traceCardsContainer = document.getElementById('traceCardsContainer');
+    const latestThoughtContent = document.getElementById('latestThoughtContent');
+    const thinkingBadge = document.getElementById('thinkingBadge');
+    const thinkingDot = document.getElementById('thinkingDot');
+    const thoughtModalList = document.getElementById('thoughtModalList');
+    const thoughtModal = document.getElementById('thoughtModal');
+    const thoughtDurationBadge = document.getElementById('thoughtDurationBadge');
+    const thoughtDurationText = document.getElementById('thoughtDurationText');
+    const thoughtChevron = document.getElementById('thoughtChevron');
+    const thoughtBadgeBar = document.getElementById('thoughtBadgeBar');
+    const btnToggleDock = document.getElementById('btnToggleDock');
+    const dockToggleIcon = document.getElementById('dockToggleIcon');
+    const dockToggleText = document.getElementById('dockToggleText');
+    const cognitionDrawer = document.getElementById('cognitionDrawer');
+    const projectTabsContainer = document.getElementById('projectTabsContainer');
+    const projectPanelsWrapper = document.getElementById('projectPanelsWrapper');
+
+    // Multi-Project Telemetry Store
+    const projectState = {
+      activeProjectId: 'primary',
+      projects: new Map() // id -> { id, projectName, latestThought, latestDuration, thoughts: [], recentEvents: [], stepCount }
+    };
+
+    // Seed with primary project
+    projectState.projects.set('primary', {
+      id: 'primary',
+      projectName: 'ai-activity-visualizer',
+      latestThought: 'Observing workspace activity and listening to Antigravity live transcript telemetry...',
+      latestDuration: 25,
+      thoughts: [],
+      recentEvents: [],
+      stepCount: 143
+    });
+
+    let thoughtArchive = [];
+
+    // Markdown renderer for structured AI reasoning
+    function renderThoughtMarkdown(text) {
+      if (!text) return '<span class="text-slate-400 italic">No reasoning captured yet.</span>';
+      const escaped = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      return escaped
+        .replace(/^### (.*$)/gim, '<div class="text-cyan-300 font-bold text-xs mt-2 mb-0.5">$1</div>')
+        .replace(/^## (.*$)/gim, '<div class="text-amber-300 font-bold text-xs mt-2.5 mb-1 uppercase tracking-wider">$1</div>')
+        .replace(/^# (.*$)/gim, '<div class="text-white font-extrabold text-sm mt-3 mb-1 pb-1 border-b border-[#1b365d]">$1</div>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-bold">$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em class="text-cyan-200">$1</em>')
+        .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-[#030816] text-cyan-300 border border-[#1b365d] text-[10px] font-mono">$1</code>')
+        .replace(/^- (.*$)/gim, '<div class="flex items-start gap-1.5 my-0.5"><span class="text-cyan-400 mt-0.5 font-bold">•</span><span>$1</span></div>')
+        .replace(/\n\n/g, '<div class="h-2"></div>')
+        .replace(/\n/g, '<br/>');
+    }
+
+    // Toggle bottom drawer
+    function toggleCognitionDock() {
+      const isHidden = cognitionDrawer.classList.contains('hidden');
+      if (isHidden) {
+        cognitionDrawer.classList.remove('hidden');
+        dockToggleIcon.textContent = '▼';
+        dockToggleText.textContent = 'COLLAPSE REASONING';
+        if (thoughtChevron) thoughtChevron.style.transform = 'rotate(90deg)';
+      } else {
+        cognitionDrawer.classList.add('hidden');
+        dockToggleIcon.textContent = '▲';
+        dockToggleText.textContent = 'EXPAND REASONING';
+        if (thoughtChevron) thoughtChevron.style.transform = 'rotate(0deg)';
+      }
+      playSciFiChirp('click');
+      setTimeout(resize, 50);
+    }
+
+    if (btnToggleDock) btnToggleDock.addEventListener('click', toggleCognitionDock);
+    if (thoughtBadgeBar) thoughtBadgeBar.addEventListener('click', toggleCognitionDock);
+
+    // Automatic 3D Node Highlighting with Ambient Energy Aura
+    function highlightThoughtNodes(thoughtText, files = []) {
+      if (!thoughtText && (!files || files.length === 0)) return null;
+      const targetTokens = new Set();
+      if (Array.isArray(files)) {
+        files.forEach(f => {
+          if (typeof f === 'string') {
+            targetTokens.add(f.toLowerCase());
+            targetTokens.add(f.split('/').pop().toLowerCase());
+          }
+        });
+      }
+
+      if (thoughtText && typeof thoughtText === 'string') {
+        const fileRegex = /\b([a-zA-Z0-9_\-\.\/]+\.(?:ts|tsx|js|mjs|json|html|css|py|md|sql))\b/gi;
+        let m;
+        while ((m = fileRegex.exec(thoughtText)) !== null) {
+          targetTokens.add(m[1].toLowerCase());
+          targetTokens.add(m[1].split('/').pop().toLowerCase());
+        }
+
+        const keywords = ['constellationgraph', 'constellation', 'database', 'normalizer', 'bridge', 'dashboard', 'adapter', 'extension', 'trace'];
+        keywords.forEach(kw => {
+          if (thoughtText.toLowerCase().includes(kw)) targetTokens.add(kw);
+        });
+      }
+
+      let matchedNode = null;
+      nodes.forEach(n => {
+        const nName = n.name.toLowerCase();
+        const nPath = (n.fullPath || n.id).toLowerCase();
+        let hit = targetTokens.has(nName) || targetTokens.has(nPath);
+        if (!hit) {
+          for (const t of targetTokens) {
+            if (nName.includes(t) || nPath.includes(t)) {
+              hit = true;
+              break;
+            }
+          }
+        }
+        if (hit) {
+          n._thoughtAura = 1.0;
+          n.pulse = Math.PI * 2;
+          if (!matchedNode) matchedNode = n;
+
+          // Spawn signal packet to connected peer in same cluster
+          const clusterPeers = nodes.filter(p => p.cluster === n.cluster && p !== n);
+          if (clusterPeers.length > 0) {
+            const peer = clusterPeers[Math.floor(Math.random() * clusterPeers.length)];
+            spawnEnergyPacket(n, peer, '#00f0ff');
+          }
+        }
+      });
+
+      return matchedNode;
+    }
+
+    // Switch active project tab with smooth slide & fade animation
+    function switchProjectTab(newId) {
+      if (!newId || newId === projectState.activeProjectId) return;
+      const oldId = projectState.activeProjectId;
+      projectState.activeProjectId = newId;
+
+      // Update Tab Pill styles
+      document.querySelectorAll('.project-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.projectId === newId);
+      });
+
+      // Smooth slide/fade transition between panes
+      const oldPane = document.getElementById(`projectPane_${oldId}`);
+      const newPane = document.getElementById(`projectPane_${newId}`);
+
+      if (oldPane) {
+        oldPane.classList.remove('active');
+        oldPane.classList.add('slide-left');
+        setTimeout(() => {
+          oldPane.classList.remove('slide-left');
+        }, 360);
+      }
+
+      if (newPane) {
+        newPane.classList.remove('slide-left');
+        void newPane.offsetWidth; // Force CSS reflow
+        newPane.classList.add('active');
+      }
+
+      // Sync thought pill, header, and camera focus
+      const p = projectState.projects.get(newId);
+      if (p) {
+        updateThoughtBadge(p.latestDuration || 25, p.latestThought, p.stepCount || 1, false);
+        highlightThoughtNodes(p.latestThought);
+
+        // Smoothly glide camera toward that project's cluster in 3D space
+        const targetCluster = p.projectName.includes('adapter') ? 'adapters' 
+          : (p.projectName.includes('webview') ? 'webview' 
+          : (p.projectName.includes('coordinator') ? 'core-engine' : 'ai-activity-visualizer'));
+        const cInfo = clusterCentroids[targetCluster];
+        if (cInfo) {
+          flyCameraToPoint(cInfo.cx, cInfo.cy, cInfo.cz);
+        }
+      }
+
+      playSciFiChirp('click');
+    }
+
+    // Update the Antigravity signature duration badge e.g. "Thought for 25s ›" with live typing effect
+    let typingTimer = null;
+    function updateThoughtBadge(durationSeconds = 25, text = '', step = 1, isThinking = false) {
+      if (thoughtDurationText) {
+        thoughtDurationText.textContent = isThinking ? `Thinking ${durationSeconds}s...` : `Thought for ${durationSeconds}s`;
+      }
+      if (thoughtDurationBadge) {
+        if (isThinking) thoughtDurationBadge.classList.add('thinking-active');
+        else thoughtDurationBadge.classList.remove('thinking-active');
+      }
+      if (thinkingBadge) {
+        thinkingBadge.textContent = isThinking ? `THINKING (#${step})` : `STEP #${step}`;
+      }
+      if (thinkingDot) {
+        thinkingDot.className = isThinking 
+          ? 'w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#00f0ff] animate-ping'
+          : 'w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8] animate-pulse';
+      }
+
+      if (text && latestThoughtContent) {
+        if (isThinking) {
+          if (typingTimer) clearInterval(typingTimer);
+          let charIdx = 0;
+          latestThoughtContent.innerHTML = `<span class="text-cyan-300">"</span><span id="streamingThoughtText"></span><span class="cursor-stream"></span>`;
+          const targetSpan = document.getElementById('streamingThoughtText');
+          typingTimer = setInterval(() => {
+            charIdx += 4;
+            if (charIdx >= text.length) {
+              clearInterval(typingTimer);
+              typingTimer = null;
+              latestThoughtContent.textContent = `"${text.slice(0, 140)}${text.length > 140 ? '...' : ''}"`;
+            } else if (targetSpan) {
+              targetSpan.textContent = text.slice(0, Math.min(140, charIdx));
+            }
+          }, 18);
+        } else {
+          if (typingTimer) { clearInterval(typingTimer); typingTimer = null; }
+          latestThoughtContent.textContent = `"${text.slice(0, 140)}${text.length > 140 ? '...' : ''}"`;
+        }
+      }
+    }
+
+    // Render / update project tabs and layered panels in the DOM
+    function renderProjectPanels() {
+      if (!projectTabsContainer || !projectPanelsWrapper) return;
+
+      // 1. Render tabs
+      projectTabsContainer.innerHTML = '';
+      projectState.projects.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = `project-tab-btn ${p.id === projectState.activeProjectId ? 'active' : ''}`;
+        btn.dataset.projectId = p.id;
+        const icon = p.projectName.includes('coordinator') ? '👑' : (p.projectName.includes('worker') ? '⚡' : '🔮');
+        btn.innerHTML = `
+          <span>${icon}</span>
+          <span>${p.projectName}</span>
+          <span class="text-[9px] px-1 rounded bg-[#061124] text-cyan-300 border border-cyan-900/60 font-mono">#${p.stepCount || 1}</span>
+        `;
+        btn.addEventListener('click', () => switchProjectTab(p.id));
+        projectTabsContainer.appendChild(btn);
+      });
+
+      // 2. Ensure each project has its pane
+      projectState.projects.forEach(p => {
+        let pane = document.getElementById(`projectPane_${p.id}`);
+        if (!pane) {
+          pane = document.createElement('div');
+          pane.id = `projectPane_${p.id}`;
+          pane.className = `project-pane ${p.id === projectState.activeProjectId ? 'active' : ''}`;
+          pane.innerHTML = `
+            <!-- Left Column: Synchronized Cause-and-Effect Timeline Stream -->
+            <div class="flex flex-col h-full bg-[#060e20] border border-[#172e50] rounded-xl p-3.5 overflow-hidden">
+              <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#172e50]">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8] animate-pulse"></span>
+                  <span class="font-extrabold text-cyan-300 mono text-xs uppercase">${p.projectName} // COGNITION TIMELINE</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="step-indicator text-[10px] text-slate-400 mono font-semibold">TURN #${p.stepCount || 1}</span>
+                  <button class="btn-highlight-pane text-[10px] text-cyan-300 hover:text-white bg-cyan-950/80 hover:bg-cyan-900 px-2 py-0.5 rounded border border-cyan-800/80 mono transition flex items-center gap-1 font-semibold">
+                    <span>🎯</span> Aura Highlight
+                  </button>
+                </div>
+              </div>
+              <div class="turns-timeline flex-1 overflow-y-auto pr-2 mono text-xs space-y-2.5">
+                <!-- Dynamically populated with synchronized turn cards -->
+              </div>
+            </div>
+
+            <!-- Right Column: Cause & Effect Tool Actions & Live Agent Trace -->
+            <div class="flex flex-col h-full bg-[#060e20] border border-[#172e50] rounded-xl p-3.5 overflow-hidden">
+              <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#172e50]">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+                  <span class="text-slate-200 font-bold mono text-xs uppercase tracking-wider">PROJECT ACTIONS & TRACE</span>
+                </div>
+                <span class="text-[9px] text-cyan-400 mono font-bold">CAUSALITY STREAM</span>
+              </div>
+              <div class="project-actions-list flex-1 overflow-y-auto pr-1 mono text-[11px] space-y-1.5 text-slate-200">
+                <div class="text-cyan-400/90">[PROJECT] Initialized observation channel for ${p.projectName}...</div>
+              </div>
+            </div>
+          `;
+
+          // Add highlight button listener
+          const btnHighlight = pane.querySelector('.btn-highlight-pane');
+          if (btnHighlight) {
+            btnHighlight.addEventListener('click', () => {
+              highlightThoughtNodes(p.latestThought || p.projectName);
+              playSciFiChirp('thinking');
+            });
+          }
+
+          projectPanelsWrapper.appendChild(pane);
+        }
+
+        // Populate or update turn cards in timeline
+        const timelineEl = pane.querySelector('.turns-timeline');
+        if (timelineEl) {
+          const turns = (p.turns && p.turns.length > 0) ? p.turns : (p.thoughts ? p.thoughts.map(th => ({
+            step: th.step,
+            thought: th,
+            actions: p.recentEvents ? p.recentEvents.filter(e => e.step === th.step) : []
+          })) : []);
+
+          timelineEl.innerHTML = '';
+          if (turns.length === 0) {
+            timelineEl.innerHTML = `
+              <div class="p-3 rounded bg-[#030917] border border-[#172e50] text-slate-400 text-xs italic">
+                Waiting for cognition stream from Antigravity...
+              </div>
+            `;
+          } else {
+            // Show recent turns (most recent first)
+            const recentTurns = [...turns].reverse().slice(0, 10);
+            recentTurns.forEach(turn => {
+              const th = turn.thought || turn;
+              const thText = th.text || th.thinking || p.latestThought || '';
+              const duration = th.durationSeconds || p.latestDuration || 25;
+              const turnCard = document.createElement('div');
+              turnCard.className = 'turn-card bg-[#050c1a] border border-[#172e50] rounded-lg p-2.5 hover:border-cyan-500/50 transition';
+              
+              const actionsList = (turn.actions || []).map(a => {
+                const pText = a.filePath || a.command || a.summary || 'action';
+                const shortP = pText.includes('/') ? pText.split('/').pop() : pText;
+                let tagColor = 'bg-cyan-950 text-cyan-300 border-cyan-800';
+                if (a.activityType === 'file_write') tagColor = 'bg-amber-950 text-amber-300 border-amber-800';
+                else if (a.activityType === 'file_create') tagColor = 'bg-emerald-950 text-emerald-300 border-emerald-800';
+                else if (a.activityType === 'terminal_command') tagColor = 'bg-purple-950 text-purple-300 border-purple-800';
+                return `<button class="action-node-pill px-1.5 py-0.5 rounded text-[10px] border ${tagColor} truncate max-w-[170px] hover:border-cyan-400 transition" data-path="${pText}">${shortP}</button>`;
+              }).join(' ');
+
+              turnCard.innerHTML = `
+                <div class="flex items-center justify-between mb-1.5 cursor-pointer turn-toggle">
+                  <div class="flex items-center gap-2">
+                    <div class="thought-pill text-[10px] py-0.5 px-2.5">
+                      <span>Thought for ${duration}s</span>
+                      <svg class="w-3 h-3 text-cyan-400 transform transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                    <span class="text-[10px] text-cyan-400 font-bold">TURN #${turn.step || 1}</span>
+                  </div>
+                  <span class="text-[9px] text-slate-500">${th.time || new Date(th.timestamp || Date.now()).toLocaleTimeString()}</span>
+                </div>
+                <div class="turn-markdown text-slate-200 text-xs leading-relaxed py-1.5 border-t border-[#132644] mt-1">
+                  ${renderThoughtMarkdown(thText)}
+                </div>
+                ${turn.actions && turn.actions.length > 0 ? `
+                  <div class="turn-actions-strip mt-2 pt-1.5 border-t border-[#132644]/70">
+                    <div class="text-[9px] uppercase tracking-wider text-amber-400/90 font-bold mb-1 flex items-center gap-1">
+                      <span>⚡</span> PRODUCED ACTIONS (${turn.actions.length}):
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                      ${actionsList}
+                    </div>
+                  </div>
+                ` : ''}
+              `;
+
+              // Turn accordion toggle
+              const toggleBtn = turnCard.querySelector('.turn-toggle');
+              const mdBody = turnCard.querySelector('.turn-markdown');
+              const chevron = turnCard.querySelector('svg');
+              if (toggleBtn && mdBody && chevron) {
+                toggleBtn.addEventListener('click', () => {
+                  const isCollapsed = mdBody.classList.contains('hidden');
+                  if (isCollapsed) {
+                    mdBody.classList.remove('hidden');
+                    chevron.style.transform = 'rotate(90deg)';
+                  } else {
+                    mdBody.classList.add('hidden');
+                    chevron.style.transform = 'rotate(0deg)';
+                  }
+                });
+              }
+
+              // Action node fly-to listeners
+              turnCard.querySelectorAll('.action-node-pill').forEach(pill => {
+                pill.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  const target = pill.dataset.path;
+                  const found = nodes.find(n => n.id === target || n.name === target || n.fullPath === target || target.includes(n.name));
+                  if (found) {
+                    flyCameraToPoint(found.x, found.y, found.z);
+                    openNodeInspector(found);
+                    found._thoughtAura = 1.0;
+                    found.pulse = Math.PI * 2;
+                  }
+                });
+              });
+
+              timelineEl.appendChild(turnCard);
+            });
+          }
+        }
+      });
+    }
+
+    renderProjectPanels();
+
+    // Simple, robust syntax highlighter for code trace cards
+    function formatSyntaxHighlight(codeStr) {
+      if (!codeStr) return '';
+      const escaped = codeStr
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      return escaped
+        .replace(/\b(export|import|from|function|class|const|let|var|return|if|else|async|await|try|catch|new|type|interface)\b/g, '<span class="syn-keyword">$1</span>')
+        .replace(/\b([a-zA-Z0-9_$]+)(?=\()/g, '<span class="syn-fn">$1</span>')
+        .replace(/('[^']*'|"[^"]*"|`[^`]*`)/g, '<span class="syn-string">$1</span>')
+        .replace(/(\/\/.*$)/gm, '<span class="syn-comment">$1</span>')
+        .replace(/\b(\d+)\b/g, '<span class="syn-num">$1</span>');
+    }
+
+    function logTrace(htmlText) {
+      if (!traceLog) return;
+      const line = document.createElement('div');
+      line.className = 'trace-entry';
+      line.innerHTML = htmlText;
+      traceLog.appendChild(line);
+      traceLog.scrollTop = traceLog.scrollHeight;
+    }
+
+    function addTraceCard(event) {
+      const card = document.createElement('div');
+      card.className = 'hud-glass-card rounded-lg p-3 text-xs mono cursor-pointer';
+
+      let badgeColor = 'text-cyan-300 bg-cyan-950/80 border-cyan-800';
+      let badgeText = 'READ';
+      if (event.activityType === 'file_write') {
+        badgeColor = 'text-amber-300 bg-amber-950/80 border-amber-800';
+        badgeText = 'WRITE';
+      } else if (event.activityType === 'file_create') {
+        badgeColor = 'text-emerald-300 bg-emerald-950/80 border-emerald-800';
+        badgeText = 'CREATE';
+      } else if (event.activityType === 'terminal_command') {
+        badgeColor = 'text-purple-300 bg-purple-950/80 border-purple-800';
+        badgeText = 'EXEC';
+      }
+
+      const pathText = event.filePath || event.command || event.summary || 'operation';
+      const rawSnippet = event.snippet || (event.command ? `$ ${event.command}` : `// Touch ${pathText}`);
+      const highlightedSnippet = formatSyntaxHighlight(rawSnippet);
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#172e50]">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span class="text-[11px] text-white font-semibold ml-1 truncate max-w-[210px]">${pathText}</span>
+          </div>
+          <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${badgeColor}">${badgeText}</span>
+        </div>
+        <div class="code-syntax">${highlightedSnippet}</div>
+      `;
+
+      card.addEventListener('click', () => {
+        const found = nodes.find(n => n.id === event.filePath || n.name === event.filePath || n.fullPath === event.filePath);
+        if (found) {
+          flyCameraToPoint(found.x, found.y, found.z);
+          openNodeInspector(found);
+        }
+      });
+
+      if (traceCardsContainer.children.length > 8) {
+        traceCardsContainer.removeChild(traceCardsContainer.lastElementChild);
+      }
+      traceCardsContainer.insertBefore(card, traceCardsContainer.firstChild);
+
+      // Also append to active project actions list in bottom dock
+      const activePane = document.getElementById(`projectPane_${projectState.activeProjectId}`) || document.getElementById('projectPane_primary');
+      if (activePane) {
+        const actionsList = activePane.querySelector('.project-actions-list');
+        if (actionsList) {
+          const actItem = document.createElement('div');
+          actItem.className = 'px-2 py-1 rounded bg-[#09152a] border border-[#1b365d] flex items-center justify-between text-[10px] cursor-pointer hover:border-cyan-400 transition';
+          actItem.innerHTML = `
+            <span class="truncate max-w-[190px] text-slate-200">${pathText}</span>
+            <span class="${badgeColor} px-1 rounded font-bold">${badgeText}</span>
+          `;
+          actItem.addEventListener('click', () => {
+            const found = nodes.find(n => n.id === event.filePath || n.name === event.filePath);
+            if (found) {
+              flyCameraToPoint(found.x, found.y, found.z);
+              openNodeInspector(found);
+            }
+          });
+          actionsList.insertBefore(actItem, actionsList.firstChild);
+          if (actionsList.children.length > 15) actionsList.removeChild(actionsList.lastElementChild);
+        }
+      }
+    }
+
+    function recordThought(step, thinkingText, durationSeconds = 25, convId = null, projName = null, mentionedFiles = []) {
+      if (!thinkingText) return;
+      const effectiveId = convId || projectState.activeProjectId || 'primary';
+      const duration = durationSeconds || Math.max(6, Math.min(60, Math.round(thinkingText.split(/\s+/).length / 9)));
+
+      // Highlight 3D nodes referenced in thought with ambient energy aura
+      highlightThoughtNodes(thinkingText, mentionedFiles);
+
+      thoughtArchive.push({ step, text: thinkingText, durationSeconds: duration, time: new Date().toLocaleTimeString() });
+
+      let p = projectState.projects.get(effectiveId);
+      if (!p) {
+        p = {
+          id: effectiveId,
+          projectName: projName || `project-${effectiveId.slice(0, 8)}`,
+          latestThought: thinkingText,
+          latestDuration: duration,
+          thoughts: [],
+          turns: [],
+          recentEvents: [],
+          stepCount: step
+        };
+        projectState.projects.set(effectiveId, p);
+      }
+
+      p.latestThought = thinkingText;
+      p.latestDuration = duration;
+      p.stepCount = Math.max(p.stepCount || 1, step);
+      const thItem = { step, text: thinkingText, durationSeconds: duration, time: new Date().toLocaleTimeString(), mentionedFiles };
+      p.thoughts.push(thItem);
+
+      if (!p.turns) p.turns = [];
+      p.turns.push({
+        id: `turn_${step}_${Date.now()}`,
+        step,
+        thought: thItem,
+        actions: [],
+        timestamp: Date.now()
+      });
+      if (p.turns.length > 25) p.turns.shift();
+
+      // Update badge if this is active project or primary
+      if (effectiveId === projectState.activeProjectId || projectState.projects.size === 1) {
+        updateThoughtBadge(duration, thinkingText, step, false);
+      }
+
+      renderProjectPanels();
+
+      // Update Archive Modal
+      const item = document.createElement('div');
+      item.className = 'bg-[#060d1a] p-3 rounded-lg border border-[#1b365d] leading-relaxed';
+      item.innerHTML = `
+        <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#172e50]">
+          <div class="flex items-center gap-2">
+            <span class="text-cyan-400 font-bold">REASONING STEP #${step}</span>
+            <span class="thought-pill text-[9px] py-0 px-2">Thought for ${duration}s</span>
+          </div>
+          <span class="text-slate-500 text-[10px]">${new Date().toLocaleTimeString()}</span>
+        </div>
+        <div class="text-slate-200 whitespace-pre-wrap">${renderThoughtMarkdown(thinkingText)}</div>
+      `;
+      thoughtModalList.appendChild(item);
+      thoughtModalList.scrollTop = thoughtModalList.scrollHeight;
+
+      logTrace(`<span class="text-pink-400 font-bold">[THINK]</span> <span class="text-slate-200">${thinkingText.slice(0, 120)}...</span>`);
+      playSciFiChirp('thinking');
+    }
+
+    document.getElementById('btnOpenThoughtModal').addEventListener('click', () => {
+      thoughtModal.classList.remove('hidden');
+    });
+    document.getElementById('btnCloseThoughtModal').addEventListener('click', () => {
+      thoughtModal.classList.add('hidden');
+    });
+
+    function handleStateSnapshot(data) {
+      if (!data) return;
+      if (data.nodes && Array.isArray(data.nodes)) {
+        data.nodes.forEach(n => addOrUpdateNode(n));
+      }
+      if (data.edges && Array.isArray(data.edges)) {
+        edges = data.edges;
+      }
+      if (data.conversations && Array.isArray(data.conversations) && data.conversations.length > 0) {
+        // Clear dummy placeholder project if real conversations exist
+        if (projectState.projects.has('primary')) {
+          projectState.projects.delete('primary');
+          const pEl = document.getElementById('projectPane_primary');
+          if (pEl) pEl.remove();
+        }
+        data.conversations.forEach(c => {
+          projectState.projects.set(c.id, {
+            id: c.id,
+            projectName: c.projectName,
+            latestThought: c.latestThought,
+            latestDuration: c.latestDuration || 25,
+            thoughts: c.thoughts || [],
+            turns: c.turns || [],
+            recentEvents: c.recentEvents || [],
+            stepCount: c.stepCount || 1
+          });
+        });
+        if (data.activeConversation && projectState.projects.has(data.activeConversation)) {
+          projectState.activeProjectId = data.activeConversation;
+        } else if (data.conversations.length > 0) {
+          projectState.activeProjectId = data.conversations[0].id;
+        }
+        renderProjectPanels();
+      }
+      if (data.latestThought) {
+        updateThoughtBadge(data.latestDuration || 25, data.latestThought, data.stats ? data.stats.thoughtsCount : 1, false);
+        highlightThoughtNodes(data.latestThought);
+      }
+      if (data.thoughts && Array.isArray(data.thoughts)) {
+        data.thoughts.forEach(th => recordThought(th.step || 1, th.text || th.thinking, th.durationSeconds, th.conversationId, th.projectName, th.mentionedFiles));
+      }
+      if (data.recentEvents && Array.isArray(data.recentEvents)) {
+        data.recentEvents.slice(-6).forEach(ev => {
+          if (ev.type === 'tool_call') addTraceCard(ev);
+        });
+      }
+      updateClusterDirectory();
+    }
+
+    async function tryConnectPort(port) {
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/api/health`, { method: 'GET', mode: 'cors' });
+        if (res.ok) {
+          const info = await res.json();
+          if (info.mode === 'antigravity_live_bridge') {
+            connectedPort = port;
+            initSSEConnection(port);
+            return true;
+          }
+        }
+      } catch (err) {}
+      return false;
+    }
+
+    async function findAndConnectBridge() {
+      bridgeStatusText.textContent = 'SEARCHING FOR BRIDGE (5175, 5174)...';
+      for (const p of CANDIDATE_PORTS) {
+        if (await tryConnectPort(p)) return;
+      }
+      setTimeout(findAndConnectBridge, 2500);
+    }
+
+    function initSSEConnection(port) {
+      bridgeStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981] animate-pulse';
+      bridgeStatusText.textContent = `🟢 LIVE BRIDGE LINKED · PORT ${port}`;
+      btnBrowserLink.href = `http://127.0.0.1:${port}/`;
+      document.getElementById('telemetryMode').textContent = 'CONNECTED (SSE)';
+
+      if (eventSource) eventSource.close();
+      try {
+        eventSource = new EventSource(`http://127.0.0.1:${port}/api/stream`);
+
+        eventSource.addEventListener('initial_state', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            handleStateSnapshot(data);
+            logTrace(`<span class="text-emerald-400 font-bold">[CONNECT] Hydrated ${data.nodes.length} nodes & connections.</span>`);
+          } catch (err) {}
+        });
+
+        eventSource.addEventListener('thinking', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            recordThought(data.step, data.thinking, data.durationSeconds, data.conversationId, data.projectName, data.mentionedFiles);
+          } catch (err) {}
+        });
+
+        eventSource.addEventListener('conversation_update', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.id) {
+              if (projectState.projects.has('primary')) {
+                projectState.projects.delete('primary');
+                const pEl = document.getElementById('projectPane_primary');
+                if (pEl) pEl.remove();
+              }
+              let p = projectState.projects.get(data.id);
+              if (!p) {
+                p = { id: data.id, projectName: data.projectName, thoughts: [], turns: [], recentEvents: [], stepCount: data.step };
+                projectState.projects.set(data.id, p);
+              }
+              p.latestThought = data.latestThought;
+              p.latestDuration = data.latestDuration || 25;
+              p.stepCount = data.step || p.stepCount;
+              if (data.thoughtItem) p.thoughts.push(data.thoughtItem);
+              if (data.turn) {
+                if (!p.turns) p.turns = [];
+                p.turns.push(data.turn);
+                if (p.turns.length > 25) p.turns.shift();
+              }
+              if (data.id === projectState.activeProjectId) {
+                updateThoughtBadge(p.latestDuration, p.latestThought, p.stepCount, false);
+                highlightThoughtNodes(data.latestThought, data.thoughtItem?.mentionedFiles);
+              }
+              renderProjectPanels();
+            }
+          } catch (err) {}
+        });
+
+        eventSource.addEventListener('conversation_switch', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.activeConversation) {
+              switchProjectTab(data.activeConversation);
+            }
+          } catch (err) {}
+        });
+
+        eventSource.addEventListener('tool', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.node) {
+              addOrUpdateNode({ id: data.filePath || data.node.name, ...data.node, snippet: data.snippet });
+            }
+            if (data.filePath) {
+              addOrUpdateNode({ id: data.filePath, name: data.filePath.split('/').pop(), activity: data.activityType, snippet: data.snippet });
+            }
+
+            let colorTag = 'text-cyan-400';
+            let actPrefix = 'READ';
+            if (data.activityType === 'file_write') { colorTag = 'text-amber-400 font-bold'; actPrefix = 'WRITE'; }
+            else if (data.activityType === 'file_create') { colorTag = 'text-emerald-400 font-bold'; actPrefix = 'CREATE'; }
+            else if (data.activityType === 'terminal_command') { colorTag = 'text-purple-400 font-bold'; actPrefix = 'EXEC'; }
+
+            logTrace(`<span class="${colorTag}">[${actPrefix}]</span> <span class="text-slate-100">${data.summary || data.toolName}</span>`);
+            addTraceCard(data);
+            playSciFiChirp(data.activityType === 'file_write' ? 'write' : 'read');
+
+            const countEl = document.getElementById('telemetryEventCount');
+            countEl.textContent = parseInt(countEl.textContent || '0', 10) + 1;
+          } catch (err) {}
+        });
+
+        eventSource.addEventListener('user', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            logTrace(`<span class="text-emerald-400 font-bold">[USER]</span> <span class="text-slate-100">"${data.text}"</span>`);
+          } catch (err) {}
+        });
+
+        eventSource.addEventListener('pulse', () => {
+          corePulse += Math.PI * 1.5;
+          nodes.forEach(n => n.pulse = Math.PI * 2);
+          playSciFiChirp('shockwave');
+        });
+
+        eventSource.onerror = () => {
+          bridgeStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping';
+          bridgeStatusText.textContent = `RECONNECTING LIVE BRIDGE (PORT ${port})...`;
+          if (eventSource) eventSource.close();
+          setTimeout(() => findAndConnectBridge(), 2000);
+        };
+      } catch (err) {
+        // Fallback polling
+        setInterval(async () => {
+          if (!connectedPort) return;
+          try {
+            const res = await fetch(`http://127.0.0.1:${connectedPort}/api/state`);
+            if (res.ok) handleStateSnapshot(await res.json());
+          } catch {}
+        }, 2500);
+      }
+    }
+
+    findAndConnectBridge();
+
+    // =========================================================================
+    // 8. INTERACTIVE HUD BUTTONS & 3D PHYSICS SHOCKWAVE
+    // =========================================================================
+    document.getElementById('btnBigBang').addEventListener('click', () => {
+      playSciFiChirp('shockwave');
+      // Explode nodes into 3D space
+      nodes.forEach(n => {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = (Math.random() - 0.5) * Math.PI;
+        const force = Math.random() * 14 + 10;
+        n.vx = Math.cos(theta) * Math.cos(phi) * force;
+        n.vy = Math.sin(phi) * force;
+        n.vz = Math.sin(theta) * Math.cos(phi) * force;
+        n.pulse = Math.PI * 2;
+      });
+    });
+
+    document.getElementById('btnPulseCore').addEventListener('click', () => {
+      playSciFiChirp('thinking');
+      corePulse += Math.PI * 1.5;
+      nodes.forEach(n => n.pulse = Math.PI * 2);
+      if (connectedPort) {
+        fetch(`http://127.0.0.1:${connectedPort}/api/pulse`, { method: 'POST', mode: 'cors' }).catch(() => {});
+      }
+    });
+
+    document.getElementById('btnResetView').addEventListener('click', () => {
+      trackingNode = null;
+      hideTrackingUI();
+      camera.targetLookAtX = 0;
+      camera.targetLookAtY = 0;
+      camera.targetLookAtZ = 0;
+      setCameraPreset('reset');
+    });
+
+    // Sidebar Collapse Toggles (Unobstructed Full-Width 3D Graph View)
+    const leftSidebar = document.getElementById('leftSidebar');
+    const rightTraceStack = document.getElementById('rightTraceStack');
+    const btnToggleLeftSidebar = document.getElementById('btnToggleLeftSidebar');
+    const btnToggleRightSidebar = document.getElementById('btnToggleRightSidebar');
+    const leftSidebarIcon = document.getElementById('leftSidebarIcon');
+    const rightSidebarIcon = document.getElementById('rightSidebarIcon');
+
+    if (btnToggleLeftSidebar && leftSidebar) {
+      btnToggleLeftSidebar.addEventListener('click', () => {
+        const isCollapsed = leftSidebar.classList.contains('panel-collapsed-left');
+        if (isCollapsed) {
+          leftSidebar.classList.remove('panel-collapsed-left');
+          if (liveAgentTraceDock) liveAgentTraceDock.classList.remove('panel-collapsed-left');
+          if (leftSidebarIcon) leftSidebarIcon.textContent = '◀';
+        } else {
+          leftSidebar.classList.add('panel-collapsed-left');
+          if (liveAgentTraceDock) liveAgentTraceDock.classList.add('panel-collapsed-left');
+          if (leftSidebarIcon) leftSidebarIcon.textContent = '▶';
+        }
+        playSciFiChirp('click');
+        setTimeout(resize, 40);
+      });
+    }
+
+    if (btnToggleRightSidebar && rightTraceStack) {
+      btnToggleRightSidebar.addEventListener('click', () => {
+        const isCollapsed = rightTraceStack.classList.contains('panel-collapsed-right');
+        if (isCollapsed) {
+          rightTraceStack.classList.remove('panel-collapsed-right');
+          if (rightSidebarIcon) rightSidebarIcon.textContent = '▶';
+        } else {
+          rightTraceStack.classList.add('panel-collapsed-right');
+          if (rightSidebarIcon) rightSidebarIcon.textContent = '◀';
+        }
+        playSciFiChirp('click');
+        setTimeout(resize, 40);
+      });
+    }
+
+    // Search & Spotlight in 3D
+    const searchInput = document.getElementById('searchInput');
+    const searchMatchCount = document.getElementById('searchMatchCount');
+
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      let matchedCount = 0;
+      let firstMatch = null;
+
+      if (!q) {
+        nodes.forEach(n => {
+          n._searchMatched = false;
+          n.size = 6;
+        });
+        searchMatchCount.classList.add('hidden');
+        return;
+      }
+
+      nodes.forEach(n => {
+        if (n.name.toLowerCase().includes(q) || n.fullPath.toLowerCase().includes(q) || n.cluster.toLowerCase().includes(q)) {
+          n._searchMatched = true;
+          n.size = 12;
+          n.pulse = Math.PI * 2;
+          matchedCount++;
+          if (!firstMatch) firstMatch = n;
+        } else {
+          n._searchMatched = false;
+          n.size = 4;
+        }
+      });
+
+      searchMatchCount.textContent = matchedCount;
+      searchMatchCount.classList.remove('hidden');
+
+      if (firstMatch) {
+        flyCameraToPoint(firstMatch.x, firstMatch.y, firstMatch.z, firstMatch);
+      }
+    });
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        searchInput.focus();
+      }
+      if (e.key === 'Escape') {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+        nodeInspectorModal.classList.add('hidden');
+        thoughtModal.classList.add('hidden');
+        trackingNode = null;
+        hideTrackingUI();
+        camera.targetLookAtX = 0;
+        camera.targetLookAtY = 0;
+        camera.targetLookAtZ = 0;
+      }
+    });
+  </script>
+</body>
+</html>

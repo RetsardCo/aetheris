@@ -57,6 +57,30 @@ export class AntigravityHookAdapter implements AgentAdapter {
     return path.join(homedir, '.gemini', 'antigravity', 'hook_events.jsonl');
   }
 
+  public resolveActiveTranscriptPath(): string | null {
+    const homedir = os.homedir();
+    const brainDir = path.join(homedir, '.gemini', 'antigravity', 'brain');
+    if (fs.existsSync(brainDir)) {
+      try {
+        const subdirs = fs.readdirSync(brainDir);
+        let latestPath: string | null = null;
+        let latestMtime = 0;
+        for (const sub of subdirs) {
+          const p = path.join(brainDir, sub, '.system_generated', 'logs', 'transcript.jsonl');
+          if (fs.existsSync(p)) {
+            const mtime = fs.statSync(p).mtimeMs;
+            if (mtime > latestMtime) {
+              latestMtime = mtime;
+              latestPath = p;
+            }
+          }
+        }
+        return latestPath;
+      } catch {}
+    }
+    return null;
+  }
+
   private detectEnvironment(): void {
     const homedir = os.homedir();
     const agDir = path.join(homedir, '.gemini', 'antigravity');
@@ -75,6 +99,11 @@ export class AntigravityHookAdapter implements AgentAdapter {
     this.onEventCallback = onEvent;
     if (this.hookBridgePath && fs.existsSync(this.hookBridgePath)) {
       this.watchBridgeFile(this.hookBridgePath);
+    } else {
+      const activeTranscript = this.resolveActiveTranscriptPath();
+      if (activeTranscript && fs.existsSync(activeTranscript)) {
+        this.watchBridgeFile(activeTranscript);
+      }
     }
   }
 
@@ -137,36 +166,59 @@ export class AntigravityHookAdapter implements AgentAdapter {
   private watchBridgeFile(filePath: string): void {
     try {
       let offset = fs.statSync(filePath).size;
+      const processChanges = () => {
+        try {
+          const stats = fs.statSync(filePath);
+          if (stats.size > offset) {
+            const startOffset = offset;
+            offset = stats.size;
+            const stream = fs.createReadStream(filePath, { start: startOffset });
+            let buffer = '';
+            stream.on('data', (c) => {
+              buffer += c.toString();
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+              for (const line of lines) {
+                if (line.trim()) {
+                  try {
+                    const data = JSON.parse(line);
+                    if (data.hookEvent) {
+                      this.handleHookEvent(data);
+                    } else if (data.tool_calls && Array.isArray(data.tool_calls)) {
+                      for (const tc of data.tool_calls) {
+                        this.handleHookEvent({
+                          hookEvent: 'PostToolUse',
+                          toolName: tc.name,
+                          toolArgs: tc.args,
+                          conversationId: data.step_index ? `step_${data.step_index}` : undefined
+                        });
+                      }
+                    }
+                  } catch {}
+                }
+              }
+            });
+          }
+        } catch {}
+      };
+
       this.watcher = fs.watch(filePath, (event) => {
         if (event === 'change') {
-          try {
-            const stats = fs.statSync(filePath);
-            if (stats.size > offset) {
-              const stream = fs.createReadStream(filePath, { start: offset, end: stats.size });
-              offset = stats.size;
-              let buffer = '';
-              stream.on('data', (c) => {
-                buffer += c.toString();
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-                for (const line of lines) {
-                  if (line.trim()) {
-                    try {
-                      this.handleHookEvent(JSON.parse(line));
-                    } catch {}
-                  }
-                }
-              });
-            }
-          } catch {}
+          processChanges();
         }
+      });
+      if (this.watcher && typeof (this.watcher as any).unref === 'function') {
+        (this.watcher as any).unref();
+      }
+      fs.watchFile(filePath, { interval: 300 }, () => {
+        processChanges();
       });
     } catch (err) {
       console.warn('Could not watch Antigravity hook bridge:', err);
     }
   }
 
-  public generateHookScript(): string {
+  public generateHookScript(authToken = 'YOUR_PER_SESSION_TOKEN', port = 5174): string {
     return `#!/usr/bin/env node
 // AI Activity Visualizer - Antigravity Hook Bridge
 const http = require('http');
@@ -175,12 +227,14 @@ function forwardHook(event) {
   const data = JSON.stringify(event);
   const req = http.request({
     hostname: '127.0.0.1',
-    port: 5174,
+    port: ${port},
     path: '/api/events',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(data),
+      'Authorization': 'Bearer ${authToken}',
+      'x-agent-token': '${authToken}',
       'x-provider': 'antigravity'
     }
   });
@@ -191,6 +245,26 @@ function forwardHook(event) {
 
 module.exports = { forwardHook };
 `;
+  }
+
+  public validateHookConfiguration(): { valid: boolean; diagnostic: string; bridgeExists: boolean } {
+    const homedir = os.homedir();
+    const agDir = path.join(homedir, '.gemini', 'antigravity');
+    const bridgeExists = this.hookBridgePath ? fs.existsSync(this.hookBridgePath) : false;
+
+    if (!fs.existsSync(agDir)) {
+      return {
+        valid: false,
+        diagnostic: `Google Antigravity home directory not found at ${agDir}. Antigravity CLI or IDE not installed in standard location.`,
+        bridgeExists
+      };
+    }
+
+    return {
+      valid: true,
+      diagnostic: `Antigravity environment detected at ${agDir}. Hook bridge queue: ${this.hookBridgePath || 'default'} (exists: ${bridgeExists}).`,
+      bridgeExists
+    };
   }
 
   public dispose(): void {

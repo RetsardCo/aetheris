@@ -114,16 +114,17 @@ export class GenericHttpAdapter implements AgentAdapter {
       return;
     }
 
-    const url = req.url || '/';
+    const urlObj = new URL(req.url || '/', `http://127.0.0.1:${this.port}`);
+    const pathname = urlObj.pathname;
 
     // Health / Status endpoint (public to loopback)
-    if (url === '/api/health' || url === '/health') {
+    if (pathname === '/api/health' || pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'ok', port: this.port, running: this.isRunning }));
       return;
     }
 
-    if (url === '/api/status') {
+    if (pathname === '/api/status') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
@@ -136,17 +137,25 @@ export class GenericHttpAdapter implements AgentAdapter {
       return;
     }
 
+    // Serve Agent Brain Web Dashboard for browser view
+    if (pathname === '/' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(this.getDashboardHtml());
+      return;
+    }
+
     // Ingestion endpoint
-    if (url === '/api/events' && req.method === 'POST') {
+    if (pathname === '/api/events' && req.method === 'POST') {
       // Validate Authorization token
       const authHeader = req.headers['authorization'];
       const customToken = req.headers['x-agent-token'];
-      const token = customToken || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null);
+      const queryToken = urlObj.searchParams.get('token');
+      const token = customToken || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null) || queryToken;
 
-      // Allow loopback if token matches or during local testing if header omitted
-      if (token && token !== this.authToken) {
+      // Strict authentication enforcement: token MUST be provided and match
+      if (!token || token !== this.authToken) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Unauthorized: Invalid token' }));
+        res.end(JSON.stringify({ error: 'Unauthorized: Missing or invalid authentication token' }));
         return;
       }
 
@@ -173,7 +182,7 @@ export class GenericHttpAdapter implements AgentAdapter {
           this.processPayload(parsed, providerHeader);
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true }));
+          res.end(JSON.stringify({ success: true, count: Array.isArray(parsed) ? parsed.length : 1 }));
         } catch (err: any) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Malformed JSON payload' }));
@@ -184,6 +193,88 @@ export class GenericHttpAdapter implements AgentAdapter {
 
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not Found' }));
+  }
+
+  private getDashboardHtml(): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Agent Brain · AI Activity Observatory</title>
+  <style>
+    body {
+      background: radial-gradient(circle at 60% 40%, #0a1120 0%, #06080d 100%);
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 30px;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 16px; margin-bottom: 24px; }
+    .title-row { display: flex; align-items: center; gap: 12px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 12px #10b981; }
+    h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+    .card { background: rgba(15, 22, 36, 0.85); border: 1px solid #202d44; border-radius: 8px; padding: 18px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 700; margin-bottom: 12px; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .stat-val { font-size: 24px; font-weight: 700; font-family: monospace; color: #38bdf8; }
+    .stat-lbl { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+    pre { background: #07090e; border: 1px solid #1e293b; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 12px; color: #38bdf8; overflow-x: auto; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: rgba(6,182,212,0.15); color: #22d3ee; border: 1px solid rgba(6,182,212,0.3); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title-row">
+      <div class="dot"></div>
+      <h1>Agent Brain · Local Activity Receiver</h1>
+      <span class="badge">Running on port ${this.port}</span>
+    </div>
+    <div style="font-size: 12px; color: #94a3b8; font-family: monospace;">Session: ${this.sessionId}</div>
+  </div>
+
+  <div class="stats-row" style="margin-bottom: 24px;">
+    <div class="card">
+      <div class="card-title">Events Captured</div>
+      <div id="evtCount" class="stat-val">${this.eventsCount}</div>
+      <div class="stat-lbl">Live HTTP / Hook stream</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Auth Token</div>
+      <div class="stat-val" style="font-size: 14px; color: #f59e0b;">${this.authToken.slice(0, 10)}...</div>
+      <div class="stat-lbl">Required for /api/events</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Receiver Status</div>
+      <div class="stat-val" style="color: #10b981; font-size: 18px;">READY</div>
+      <div class="stat-lbl">Loopback 127.0.0.1 bound</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">How to stream events via HTTP API</div>
+    <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">Post normalized activity events with your per-session bearer token:</p>
+    <pre>curl -X POST http://127.0.0.1:${this.port}/api/events \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${this.authToken}" \\
+  -H "x-provider: antigravity" \\
+  -d '{"activityType": "tool_call", "toolName": "view_file", "filePath": "src/extension.ts"}'</pre>
+  </div>
+
+  <script>
+    setInterval(async () => {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (data.eventsCaptured !== undefined) {
+          document.getElementById('evtCount').innerText = data.eventsCaptured;
+        }
+      } catch {}
+    }, 2500);
+  </script>
+</body>
+</html>`;
   }
 
   private processPayload(data: any, defaultProvider: Provider): void {

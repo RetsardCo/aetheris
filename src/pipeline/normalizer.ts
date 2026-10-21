@@ -42,7 +42,23 @@ export class EventNormalizer {
       }
     }
 
+    // Strip leading slashes
     clean = clean.replace(/^\/+/, '');
+
+    // Eliminate directory traversal sequences to prevent arbitrary path escaping
+    const segments = clean.split('/').filter((s) => s.length > 0 && s !== '.');
+    const safeSegments: string[] = [];
+    for (const seg of segments) {
+      if (seg === '..') {
+        if (safeSegments.length > 0) {
+          safeSegments.pop();
+        }
+      } else {
+        safeSegments.push(seg);
+      }
+    }
+
+    clean = safeSegments.join('/');
     return clean || null;
   }
 
