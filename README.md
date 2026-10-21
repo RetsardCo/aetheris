@@ -1,4 +1,8 @@
-# AI Activity Visualizer (Agent Brain) for Visual Studio Code
+# Aetheris — AI Activity Visualizer for Visual Studio Code
+
+<p align="center">
+  <img src="assets/branding/aetheris-logo.svg" alt="Aetheris logo — AI Activity Observatory" width="820">
+</p>
 
 [![Visual Studio Marketplace](https://img.shields.io/badge/VS%20Code-AI%20Activity%20Visualizer-blue.svg)](https://marketplace.visualstudio.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](https://opensource.org/licenses/MIT)
@@ -135,10 +139,10 @@ The extension can be customized through Visual Studio Code settings under `aiAct
 |---|---|---|
 | `aiActivityVisualizer.recordingEnabled` | `true` | Automatically starts recording on workspace launch. |
 | `aiActivityVisualizer.retentionDays` | `30` | Maximum retention period in days for SQLite event logs. |
-| `aiActivityVisualizer.maxEventsPerSession` | `20000` | Maximum event capacity per recorded session. |
+| `aiActivityVisualizer.maxEventsPerSession` | `20000` | Maximum event capacity per session. |
 | `aiActivityVisualizer.graphNodeLimit` | `1000` | Maximum number of file nodes rendered in the graph. |
 | `aiActivityVisualizer.httpReceiverPort` | `5174` | Local loopback port for HTTP event ingestion. |
-| `aiActivityVisualizer.enabledAdapters` | `["vscode", "copilot", "antigravity", "http"]` | List of active telemetry adapters. |
+| `aiActivityVisualizer.enabledAdapters` | `["vscode", "copilot", "antigravity", "http"]` | List of active adapters. |
 | `aiActivityVisualizer.excludedPatterns` | `["**/node_modules/**", "**/.git/**", "**/dist/**", ...]` | Glob patterns excluded from activity recording. |
 
 ---
@@ -171,10 +175,10 @@ npm start
 
 ## Cross-Platform Deployment Architecture
 
-The application is structured to ensure zero-friction transfer across different machines:
+The extension is structured to ensure zero-friction transfer across different machines:
 - **No Native Addons:** Database persistence is powered by `sql.js` (SQLite compiled to WebAssembly), avoiding prebuilt C++ binaries or architecture-specific compilation errors on ARM64 / x64.
 - **Pure Web Standards:** The 3D neural observatory runs entirely on HTML5 Canvas 2D with a lightweight 3D orbital projection engine, requiring no WebGL hardware extensions or proprietary drivers.
-- **Self-Contained Bridge:** `live_bridge_server.mjs` operates using standard Node.js built-ins (`http`, `fs`, `path`, `os`) and zero external server dependencies, running out-of-the-box on Windows, Linux, and macOS.
+- **Self-Contained Bridge:** `live_bridge_server.mjs` operates using standard Node.js built-ins (`http`, `fs`, `path`, `os`), running out-of-the-box on Windows, Linux, and macOS.
 
 ---
 
