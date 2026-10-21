@@ -476,6 +476,74 @@ describe('Aetheris 3D Dashboard & UI Verification', () => {
     expect(troubleContent).toContain('Aetheris: Clear Current Session');
     expect(troubleContent).not.toContain('Agent Brain');
   });
+
+  it('implements advanced 60-144 FPS rendering optimizations: spatial edge frustum culling and adaptive dynamic budgeting', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('spatialEdgeCulling: true');
+    expect(content).toContain('edgeLOD: true');
+    expect(content).toContain('adaptiveLOD');
+    expect(content).toContain('p1.x < -60 && p2.x < -60');
+    expect(content).toContain('p1.x > width + 60 && p2.x > width + 60');
+    expect(content).toContain('enableLODEdgeSkip');
+    expect(content).toContain('smoothedFrameDuration');
+    expect(content).toContain('notifyUserCanvasInteraction');
+  });
+
+  it('implements USP 1: Blast Radius & Architectural Shockwave Ripple Analysis', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('triggerBlastRadius');
+    expect(content).toContain('clearBlastRadius');
+    expect(content).toContain('blastRadiusBanner');
+    expect(content).toContain('blastRadiusStats');
+    expect(content).toContain('btnBlastRadius');
+    expect(content).toContain('_shockwaveStatus');
+    expect(content).toContain('CRITICAL CONSUMER');
+    expect(content).toContain('TEST AFFECTED');
+    expect(content).toContain('SAFE CONSUMER');
+  });
+
+  it('implements USP 2: Cognitive Rewind & Quantum Checkpoints with state time-travel', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('recordTurnCheckpoint');
+    expect(content).toContain('rewindToTurn');
+    expect(content).toContain('resumeLatestTurn');
+    expect(content).toContain('rewindBanner');
+    expect(content).toContain('rewindTurnText');
+    expect(content).toContain('btnResumeHead');
+    expect(content).toContain('btn-rewind-checkpoint');
+    expect(content).toContain('_rewindDimmed');
+  });
+
+  it('implements USP 3: Agent Cockpit Follow-Me Spectator Autopilot with user interaction override', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('btnAutopilot');
+    expect(content).toContain('autopilotEnabled');
+    expect(content).toContain('toggleAutopilot');
+    expect(content).toContain('autopilotLabel');
+    expect(content).toContain('autopilotUserOverride');
+    expect(content).toContain('AUTOPILOT: ON');
+    expect(content).toContain('AUTOPILOT: PAUSED');
+  });
+
+  it('implements USP 4: Multi-Agent Concurrency Collision Radar with audible alert and hazard tracking', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('radarIndicator');
+    expect(content).toContain('radarLabel');
+    expect(content).toContain('checkCollisionHazard');
+    expect(content).toContain('_collisionHazard');
+    expect(content).toContain('COLLISION HAZARD');
+    expect(content).toContain('type === \'collision\'');
+  });
+
+  it('implements USP 5: Context Blindspot & Hallucination Sentinel for unread imported dependencies', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('sessionReadFiles');
+    expect(content).toContain('recordFileRead');
+    expect(content).toContain('checkBlindspotHazard');
+    expect(content).toContain('_blindspotHazard');
+    expect(content).toContain('BLINDSPOT SENTINEL');
+    expect(content).toContain('inspectSentinelBox');
+  });
 });
 
 

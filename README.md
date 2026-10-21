@@ -22,22 +22,54 @@ Aetheris provides comprehensive runtime visibility into autonomous AI agent acti
    - The 3D constellation engine renders across the entire viewport background, allowing unrestricted zooming and 360-degree orbital exploration.
    - All HUD controls and telemetry modules float as frosted glass overlay panels using Apple, macOS, and iOS design guidelines (20px blur, 180% saturation, translucent dark tint, subtle borders, and layered depth).
 
-2. Continuous Camera Node Follow (3D Focus Tracking):
+2. High-Performance 60-144 FPS Graphics Architecture:
+   - Spatial Edge Frustum Culling: Edge vertices are evaluated in 2D and 3D screen space; edges where both vertices fall beyond frustum margins are rejected prior to stroke buffer allocation.
+   - Adaptive Dynamic Framerate Budgeting: Monitors frame computation durations in real time. If frame execution exceeds 16.0ms, dynamic Level of Detail (LOD) coarsening automatically skips secondary intra-cluster webs and throttles background starfield passes to lock steady 60-144 FPS.
+   - Pre-Rendered Sprite Atlas: Replaces expensive per-frame radial gradient allocations with cached offscreen canvas sprites, eliminating garbage collection pauses.
+   - Zero-Allocation Projection Buffers: Reuses in-place projection scratch buffers for nodes, core polyhedrals, and star clusters.
+
+3. Continuous Camera Node Follow (3D Focus Tracking):
    - When a file node is focused in 3D, the camera target LookAt coordinates continuously track the node's position as it moves or as the galaxy orbits.
    - The camera centers and orbits directly around the selected node rather than being pinned to the scene origin.
    - A dedicated return control allows one-click unbinding and smooth return to scene center.
 
-3. Shortest-Path Angular Velocity Stabilization:
+4. Shortest-Path Angular Velocity Stabilization:
    - Camera rotation employs shortest-path angular delta wrapping `((targetYaw - yaw) % (2 * PI))` normalized within `[-PI, PI]`.
    - Eliminates rapid spinning artifacts during spotlight search or manual focus transitions while auto-orbit is toggled.
 
-4. Side-Docked Live Agent Trace:
+5. Side-Docked Live Agent Trace:
    - Positioned neatly at the bottom-left edge without obstructing central constellation nodes.
    - Features real-time log streaming with granular filters (All, Write, Read, Exec, Think) and one-click node spotlighting.
 
-5. AI Cognition Stream and Multi-Project Reasoning:
+6. AI Cognition Stream and Multi-Project Reasoning:
    - Bottom-docked reasoning drawer supporting multi-project workspaces.
    - Real-time Markdown rendering for AI reasoning steps, duration tracking badges, and synchronized cause-and-effect timelines linking thoughts directly to produced file actions.
+
+---
+
+## Differentiated Capabilities and USPs
+
+Aetheris addresses critical gaps in conventional agent interfaces through five primary Unique Selling Propositions:
+
+1. Blast Radius and Architectural Shockwave:
+   - When an agent modifies a file, Aetheris executes directed graph traversals across imported static dependencies to identify downstream consumer files.
+   - Emits an animated chromatic shockwave through dependency edges, classifying downstream impact as Safe Consumer (Green), Test Suite Impacted (Amber), or Critical Interface Contract Hazard (Red).
+
+2. Cognitive Rewind and Quantum Checkpoints:
+   - Every cognitive reasoning turn recorded in the Cognition Dock serves as an interactive time-travel checkpoint.
+   - Selecting "Rewind to Turn #N" restores the visual state of the 3D constellation to that exact moment in reasoning history, dimming subsequent modifications and displaying an active time-travel status banner.
+
+3. Agent Cockpit (Follow-Me Spectator Autopilot):
+   - An intelligent spectator autopilot camera that dynamically pans, zooms, and tracks agent tool executions in real time.
+   - When the agent inspects documentation, performs symbol searches, or writes code, the camera glides smoothly to frame the active node with cinematic easing. User interaction automatically pauses autopilot to avoid control contention.
+
+4. Multi-Agent Concurrency Collision Radar:
+   - Tracks operational zones across distinct agent runtimes (Antigravity, GitHub Copilot, and external terminal providers).
+   - If two distinct agents modify the same file or adjacent dependency within a 60-second window, Aetheris triggers a high-visibility Collision Hazard aura on the affected node, sounds an audible synth alert, and updates the HUD radar indicator.
+
+5. Context Blindspot and Hallucination Sentinel:
+   - Audits whether an agent modified a file without having first read its imported dependencies during the active session.
+   - Files edited blindly are flagged with an unread dependency warning badge and highlighted in code trace cards to prevent hallucinated interface assumptions.
 
 ---
 
