@@ -30,7 +30,7 @@
   - [x] Implement `GenericHttpAdapter` (authenticated loopback HTTP server with security token)
   - [x] Implement `DependencyAnalyzer` (static import parsing for dependency edges)
 
-- [x] **5. Agent Brain Dashboard Webview UI**
+- [x] **5. Aetheris Dashboard Webview UI**
   - [x] Build dark theme CSS matching reference image (`#070a10` background, borders, glowing text)
   - [x] Implement top header (search files, seen badge, tour/speed toggle, tab switches)
   - [x] Implement left repo panel ("Your repo, thinking out loud.", metrics row, top folders list, attention toggle)

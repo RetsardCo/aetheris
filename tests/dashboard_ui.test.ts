@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 
-describe('Agent Brain 3D Dashboard & UI Verification', () => {
+describe('Aetheris 3D Dashboard & UI Verification', () => {
   const scratchHtmlPath = path.resolve(__dirname, '../agent_brain_dashboard.html');
   const brainHtmlPath = 'C:\\Users\\Kurados\\.gemini\\antigravity\\brain\\12ab87b3-0219-43f1-bd04-f890005d6af6\\agent_brain_dashboard.html';
 
@@ -392,6 +392,89 @@ describe('Agent Brain 3D Dashboard & UI Verification', () => {
     expect(graphContent).toContain('computeClusterCentroids');
     expect(graphContent).toContain('projectedOctaRef');
     expect(graphContent).toContain('CRYSTAL_EDGES');
+  });
+
+  it('verifies complete Aetheris rebranding and SVG logo assets across codebase', () => {
+    // 1. Dashboard title & branding
+    const scratchContent = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(scratchContent).toContain('<title>Aetheris · 3D Cognitive Observatory</title>');
+    expect(scratchContent).toContain('AETHERIS');
+    expect(scratchContent).toContain('viewBox="0 0 512 512"');
+
+    // 2. Exact SVG logo files
+    const iconSvgPath = path.resolve(__dirname, '../media/icon.svg');
+    const logoSvgPath = path.resolve(__dirname, '../media/logo.svg');
+    expect(fs.existsSync(iconSvgPath)).toBe(true);
+    expect(fs.existsSync(logoSvgPath)).toBe(true);
+
+    const iconContent = fs.readFileSync(iconSvgPath, 'utf-8');
+    const logoContent = fs.readFileSync(logoSvgPath, 'utf-8');
+    expect(iconContent).toContain('viewBox="0 0 512 512"');
+    expect(iconContent).toContain('stop-color="#74f7e8"');
+    expect(iconContent).toContain('stop-color="#a78bfa"');
+    expect(logoContent).toBe(iconContent);
+
+    // 3. package.json branding
+    const pkgPath = path.resolve(__dirname, '../package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    expect(pkg.displayName).toBe('Aetheris');
+    expect(pkg.description).toBe('Aetheris - 3D Cognitive Observatory for Autonomous AI Agents');
+    expect(pkg.contributes.viewsContainers.activitybar[0].title).toBe('Aetheris');
+    pkg.contributes.commands.forEach((cmd: any) => {
+      expect(cmd.title.startsWith('Aetheris:')).toBe(true);
+      expect(cmd.category).toBe('Aetheris');
+    });
+
+    // 4. Header & Sidebar components
+    const headerPath = path.resolve(__dirname, '../src/webview/components/Header.tsx');
+    const headerContent = fs.readFileSync(headerPath, 'utf-8');
+    expect(headerContent).toContain('Aetheris');
+    expect(headerContent).toContain('viewBox="0 0 512 512"');
+
+    const sidebarPath = path.resolve(__dirname, '../src/views/sidebar.view.ts');
+    const sidebarContent = fs.readFileSync(sidebarPath, 'utf-8');
+    expect(sidebarContent).toContain('AETHERIS');
+    expect(sidebarContent).toContain('3D Cognitive Observatory');
+    expect(sidebarContent).toContain('viewBox="0 0 512 512"');
+
+    // 5. ConstellationGraph and TraceCards rebranding
+    const graphPath = path.resolve(__dirname, '../src/webview/components/ConstellationGraph.tsx');
+    const graphContent = fs.readFileSync(graphPath, 'utf-8');
+    expect(graphContent).toContain('Aetheris Navigation');
+    expect(graphContent).not.toContain('Agent Brain Navigation');
+
+    const tracePath = path.resolve(__dirname, '../src/webview/components/TraceCards.tsx');
+    const traceContent = fs.readFileSync(tracePath, 'utf-8');
+    expect(traceContent).toContain('aetheris --listen');
+    expect(traceContent).toContain('Aetheris live observatory ready');
+    expect(traceContent).not.toContain('Agent Brain');
+
+    // 6. Diagnostics and Adapter rebranding
+    const extPath = path.resolve(__dirname, '../src/extension.ts');
+    const extContent = fs.readFileSync(extPath, 'utf-8');
+    expect(extContent).toContain('Aetheris Diagnostics');
+    expect(extContent).not.toContain('Agent Brain Diagnostics');
+
+    const httpAdapterPath = path.resolve(__dirname, '../src/adapters/http.adapter.ts');
+    const httpContent = fs.readFileSync(httpAdapterPath, 'utf-8');
+    expect(httpContent).toContain('Aetheris · Local Activity Receiver');
+    expect(httpContent).not.toContain('Agent Brain');
+
+    // 7. README documentation & zero emojis
+    const readmePath = path.resolve(__dirname, '../README.md');
+    const readmeContent = fs.readFileSync(readmePath, 'utf-8');
+    expect(readmeContent).toContain('# Aetheris - 3D Cognitive Observatory for Autonomous AI Agents');
+    expect(readmeContent).toContain('<img src="media/logo.svg" width="160" alt="Aetheris Logo" />');
+    const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}]/u;
+    expect(emojiRegex.test(readmeContent)).toBe(false);
+
+    // 8. TROUBLESHOOTING.md
+    const troublePath = path.resolve(__dirname, '../TROUBLESHOOTING.md');
+    const troubleContent = fs.readFileSync(troublePath, 'utf-8');
+    expect(troubleContent).toContain('Aetheris: Show Diagnostics & Logs');
+    expect(troubleContent).toContain('Aetheris: Running');
+    expect(troubleContent).toContain('Aetheris: Clear Current Session');
+    expect(troubleContent).not.toContain('Agent Brain');
   });
 });
 

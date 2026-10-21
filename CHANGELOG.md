@@ -17,7 +17,7 @@ All notable changes to the **Aetheris** extension will be documented in this fil
 ## [1.0.0] - 2026-10-20
 
 ### Added
-- **Agent Brain Visualizer**: Recreated the Agent Brain dark-first developer tool UI featuring a 60fps Canvas 2D constellation graph with a 3D rotating diamond wireframe core, orbital comet trail, glowing activity halos, and interactive pan/zoom.
+- **Aetheris Visualizer**: Recreated the Aetheris dark-first developer tool UI featuring a 60fps Canvas 2D constellation graph with a 3D rotating diamond wireframe core, orbital comet trail, glowing activity halos, and interactive pan/zoom.
 - **Top Header**: Search input with file filtering, seen stats counter, live recording pill, and 4 view navigation buttons.
 - **Left Repository Panel**: "Your repo, thinking out loud" hero text, 4-column metric strip (Files, Folders, Connections, Touched), Top Folders list with colored indicators, and attention filter toggle.
 - **Floating Trace Cards**: Dark code cards with macOS `● ● ●` window buttons, syntax highlighted text, and terminal prompt `$`.

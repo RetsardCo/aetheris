@@ -24,11 +24,11 @@ export const TraceCards: React.FC<TraceCardsProps> = ({ events, onOpenFile, onIn
               <span className="win-dot dot-yellow"></span>
               <span className="win-dot dot-green"></span>
             </div>
-            <span className="trace-card-title">$ agent-brain --listen</span>
+            <span className="trace-card-title">$ aetheris --listen</span>
           </div>
           <div className="trace-card-body">
             <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: '#38bdf8' }}>
-              {`// Agent Brain live observatory ready\n// Ingesting Copilot, Antigravity & VS Code events\n// Awaiting agent invocations...`}
+              {`// Aetheris live observatory ready\n// Ingesting Copilot, Antigravity & VS Code events\n// Awaiting agent invocations...`}
             </pre>
             <span className="trace-card-prompt-symbol">$</span>
           </div>

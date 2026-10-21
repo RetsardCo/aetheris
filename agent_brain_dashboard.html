@@ -871,7 +871,7 @@
 
     let currentQuality = 'balanced';
     try {
-      const savedQ = localStorage.getItem('agent_brain_quality');
+      const savedQ = localStorage.getItem('aetheris_quality') || localStorage.getItem('agent_brain_quality');
       if (savedQ && QualitySettings[savedQ]) currentQuality = savedQ;
     } catch (_) {}
 
@@ -1675,7 +1675,10 @@
     function setQualityMode(mode) {
       if (!QualitySettings[mode]) mode = 'balanced';
       currentQuality = mode;
-      try { localStorage.setItem('agent_brain_quality', mode); } catch (_) {}
+      try {
+        localStorage.setItem('aetheris_quality', mode);
+        localStorage.setItem('agent_brain_quality', mode);
+      } catch (_) {}
 
       const buttons = [
         { id: 'btnPerfHigh', mode: 'high' },

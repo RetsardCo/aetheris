@@ -108,7 +108,7 @@ The UI is modeled directly on the **Agent Brain** visual reference (`media_17924
   - `GenericHttpAdapter`: Local loopback HTTP listener (`127.0.0.1:<port>`) with cryptographically secure session auth token.
   - Static dependency analyzer: Safely extracts imports/exports (`import`, `require`, `from`) to construct genuine dependency edges.
 
-- [ ] **Phase 5: Agent Brain Dashboard UI Implementation**
+- [ ] **Phase 5: Aetheris Dashboard UI Implementation**
   - Layout & CSS design matching `media_1792485704082_84a33ff8.png`:
     - Top header: Search bar, seen statistics, tour/speed toggle, tab view switches.
     - Left column: "Your repo, thinking out loud.", 4-stat metrics counter, top folders with colored indicators, label & attention toggles.

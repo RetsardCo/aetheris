@@ -17,11 +17,11 @@ const HOST = '127.0.0.1';
 
 // Process-level resilience against transient Windows file lock errors
 process.on('uncaughtException', (err) => {
-  console.warn(`[Agent Brain Bridge] Handled uncaught exception: ${err?.message || err}`);
+  console.warn(`[Aetheris Bridge] Handled uncaught exception: ${err?.message || err}`);
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.warn(`[Agent Brain Bridge] Handled unhandled rejection:`, reason);
+  console.warn(`[Aetheris Bridge] Handled unhandled rejection:`, reason);
 });
 
 // Brain directories
@@ -32,8 +32,8 @@ const KNOWN_CONVERSATIONS = [
   'fea86683-facd-4b9d-8f71-103a84d2c33d'
 ];
 
-console.log(`[Agent Brain Bridge] Initializing...`);
-console.log(`[Agent Brain Bridge] Brain Root: ${BRAIN_ROOT}`);
+console.log(`[Aetheris Bridge] Initializing...`);
+console.log(`[Aetheris Bridge] Brain Root: ${BRAIN_ROOT}`);
 
 // In-Memory State
 const state = {
@@ -60,10 +60,10 @@ const state = {
 
 // Global error guards to prevent unexpected termination from broken socket pipes
 process.on('uncaughtException', (err) => {
-  console.warn(`[Agent Brain Bridge] Handled uncaught exception: ${err?.message}`);
+  console.warn(`[Aetheris Bridge] Handled uncaught exception: ${err?.message}`);
 });
 process.on('unhandledRejection', (reason) => {
-  console.warn(`[Agent Brain Bridge] Handled unhandled rejection: ${reason}`);
+  console.warn(`[Aetheris Bridge] Handled unhandled rejection: ${reason}`);
 });
 
 // Connected SSE clients
@@ -618,7 +618,7 @@ function tailFile(filePath) {
 
     // CRITICAL: Attach error listener immediately to prevent unhandled stream errors on Windows
     stream.on('error', (err) => {
-      console.warn(`[Agent Brain Bridge] Read stream notice on ${path.basename(filePath)}: ${err?.message || err}`);
+      console.warn(`[Aetheris Bridge] Read stream notice on ${path.basename(filePath)}: ${err?.message || err}`);
       entry.isReading = false;
     });
 
@@ -633,7 +633,7 @@ function tailFile(filePath) {
           }
         }
       } catch (parseErr) {
-        console.warn(`[Agent Brain Bridge] Error processing stream chunk: ${parseErr?.message}`);
+        console.warn(`[Aetheris Bridge] Error processing stream chunk: ${parseErr?.message}`);
       }
     });
 
@@ -652,7 +652,7 @@ function tailFile(filePath) {
   } catch (err) {
     const entry = trackedFiles.get(filePath);
     if (entry) entry.isReading = false;
-    console.warn(`[Agent Brain Bridge] Notice in tailFile for ${path.basename(filePath)}: ${err?.message}`);
+    console.warn(`[Aetheris Bridge] Notice in tailFile for ${path.basename(filePath)}: ${err?.message}`);
   }
 }
 
@@ -696,19 +696,19 @@ function findActiveTranscriptPaths() {
 function loadInitialTranscripts() {
   const candidates = findActiveTranscriptPaths();
   if (candidates.length === 0) {
-    console.warn(`[Agent Brain Bridge] No active transcripts found in ${BRAIN_ROOT}`);
+    console.warn(`[Aetheris Bridge] No active transcripts found in ${BRAIN_ROOT}`);
     return;
   }
 
   // Set the most active conversation
   state.activeConversation = candidates[0].cid;
-  console.log(`[Agent Brain Bridge] Primary active conversation: ${state.activeConversation}`);
+  console.log(`[Aetheris Bridge] Primary active conversation: ${state.activeConversation}`);
 
   // Ingest candidates (up to 3 most recent)
   const toIngest = candidates.slice(0, 3).reverse();
   for (const c of toIngest) {
     try {
-      console.log(`[Agent Brain Bridge] Ingesting history from: ${c.cid} (${path.basename(c.path)})`);
+      console.log(`[Aetheris Bridge] Ingesting history from: ${c.cid} (${path.basename(c.path)})`);
       const content = fs.readFileSync(c.path, 'utf-8');
       const lines = content.split('\n');
       for (const l of lines) {
@@ -716,11 +716,11 @@ function loadInitialTranscripts() {
       }
       trackedFiles.set(c.path, { offset: fs.statSync(c.path).size, buffer: '', isReading: false });
     } catch (err) {
-      console.error(`[Agent Brain Bridge] Error loading initial transcript ${c.path}:`, err.message);
+      console.error(`[Aetheris Bridge] Error loading initial transcript ${c.path}:`, err.message);
     }
   }
 
-  console.log(`[Agent Brain Bridge] Initial state loaded: ${state.nodes.size} nodes, ${state.edges.length} edges, ${state.thoughts.length} thoughts, ${state.events.length} events.`);
+  console.log(`[Aetheris Bridge] Initial state loaded: ${state.nodes.size} nodes, ${state.edges.length} edges, ${state.thoughts.length} thoughts, ${state.events.length} events.`);
 }
 
 function setupWatchers() {
@@ -741,7 +741,7 @@ function setupWatchers() {
       const freshCandidates = findActiveTranscriptPaths();
       for (const fc of freshCandidates.slice(0, 6)) {
         if (!trackedFiles.has(fc.path)) {
-          console.log(`[Agent Brain Bridge] Discovered active conversation transcript: ${fc.cid}`);
+          console.log(`[Aetheris Bridge] Discovered active conversation transcript: ${fc.cid}`);
           trackedFiles.set(fc.path, { offset: 0, buffer: '', isReading: false });
           tailFile(fc.path);
           fs.watchFile(fc.path, { interval: 200 }, () => tailFile(fc.path));
@@ -813,7 +813,7 @@ const server = http.createServer((req, res) => {
   const urlObj = new URL(req.url || '/', `http://${HOST}:${activePort}`);
   const pathname = urlObj.pathname;
 
-  // 1. Root: Serves Agent Brain Sci-Fi Dashboard
+  // 1. Root: Serves Aetheris Sci-Fi Dashboard
   if (pathname === '/' && (req.method === 'GET' || req.method === 'HEAD')) {
     const htmlPath = findDashboardHtml();
     if (htmlPath) {
@@ -836,7 +836,7 @@ const server = http.createServer((req, res) => {
       }
     } else {
       res.writeHead(404, { 'Content-Type': 'text/html' });
-      res.end(`<h1>Agent Brain Dashboard file not found</h1><p>Looked in scratch and brain directories.</p>`);
+      res.end(`<h1>Aetheris Dashboard file not found</h1><p>Looked in scratch and brain directories.</p>`);
       return;
     }
   }
@@ -890,12 +890,12 @@ const server = http.createServer((req, res) => {
     res.write(`event: initial_state\ndata: ${JSON.stringify(getFullStateSnapshot(activePort))}\n\n`);
 
     sseClients.add(res);
-    console.log(`[Agent Brain Bridge] SSE Client connected. Active clients: ${sseClients.size}`);
+    console.log(`[Aetheris Bridge] SSE Client connected. Active clients: ${sseClients.size}`);
 
     const cleanupClient = () => {
       if (sseClients.has(res)) {
         sseClients.delete(res);
-        console.log(`[Agent Brain Bridge] SSE Client disconnected. Active clients: ${sseClients.size}`);
+        console.log(`[Aetheris Bridge] SSE Client disconnected. Active clients: ${sseClients.size}`);
       }
     };
 
@@ -1002,7 +1002,7 @@ setupWatchers();
 
 function tryListen(portIndex) {
   if (portIndex >= PREFERRED_PORTS.length) {
-    console.error(`[Agent Brain Bridge] Could not bind to any preferred ports: ${PREFERRED_PORTS.join(', ')}`);
+    console.error(`[Aetheris Bridge] Could not bind to any preferred ports: ${PREFERRED_PORTS.join(', ')}`);
     process.exit(1);
   }
 
@@ -1028,7 +1028,7 @@ function tryListen(portIndex) {
           ? `open "${url}"`
           : `xdg-open "${url}"`;
         exec(cmd, (err) => {
-          if (err) console.warn(`[Agent Brain Bridge] Could not open browser automatically: ${err.message}`);
+          if (err) console.warn(`[Aetheris Bridge] Could not open browser automatically: ${err.message}`);
         });
       }).catch(() => {});
     }
@@ -1037,10 +1037,10 @@ function tryListen(portIndex) {
   const onError = (err) => {
     server.removeListener('listening', onListening);
     if (err.code === 'EADDRINUSE') {
-      console.warn(`[Agent Brain Bridge] Port ${port} is currently in use, trying next port...`);
+      console.warn(`[Aetheris Bridge] Port ${port} is currently in use, trying next port...`);
       tryListen(portIndex + 1);
     } else {
-      console.error(`[Agent Brain Bridge] Server error:`, err);
+      console.error(`[Aetheris Bridge] Server error:`, err);
     }
   };
 

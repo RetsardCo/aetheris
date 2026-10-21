@@ -137,7 +137,7 @@ export class GenericHttpAdapter implements AgentAdapter {
       return;
     }
 
-    // Serve Agent Brain Web Dashboard for browser view
+    // Serve Aetheris Web Dashboard for browser view
     if (pathname === '/' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(this.getDashboardHtml());
@@ -200,7 +200,7 @@ export class GenericHttpAdapter implements AgentAdapter {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Agent Brain · AI Activity Observatory</title>
+  <title>Aetheris · AI Activity Observatory</title>
   <style>
     body {
       background: radial-gradient(circle at 60% 40%, #0a1120 0%, #06080d 100%);
@@ -228,7 +228,7 @@ export class GenericHttpAdapter implements AgentAdapter {
   <div class="header">
     <div class="title-row">
       <div class="dot"></div>
-      <h1>Agent Brain · Local Activity Receiver</h1>
+      <h1>Aetheris · Local Activity Receiver</h1>
       <span class="badge">Running on port ${this.port}</span>
     </div>
     <div style="font-size: 12px; color: #94a3b8; font-family: monospace;">Session: ${this.sessionId}</div>

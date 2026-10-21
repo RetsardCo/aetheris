@@ -763,7 +763,7 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
             lineHeight: 1.6
           }}
         >
-          <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>Agent Brain Navigation</div>
+          <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>Aetheris Navigation</div>
           <div>• <strong>Pan:</strong> Click & drag anywhere on the canvas</div>
           <div>• <strong>Zoom:</strong> Scroll mouse wheel</div>
           <div>• <strong>Inspect File:</strong> Click any node to open in VS Code</div>

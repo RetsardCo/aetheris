@@ -136,13 +136,13 @@ describe('Agent and Ingestion Adapters', () => {
     });
     expect(queryAuth.statusCode).toBe(200);
 
-    // 5. GET / serves the Agent Brain HTML observatory dashboard
+    // 5. GET / serves the Aetheris HTML observatory dashboard
     const dashboard = await makeRequest(`http://127.0.0.1:${port}/`, {
       method: 'GET',
       headers: {}
     });
     expect(dashboard.statusCode).toBe(200);
-    expect(dashboard.data).toContain('Agent Brain');
+    expect(dashboard.data).toContain('Aetheris');
     expect(dashboard.data).toContain('Local Activity Receiver');
 
     adapter.dispose();

@@ -544,7 +544,7 @@ async function openFileInEditor(relPath: string): Promise<void> {
 function showDiagnostics(): void {
   if (!outputChannel) return;
   outputChannel.show(true);
-  outputChannel.appendLine('--- Agent Brain Diagnostics ---');
+  outputChannel.appendLine('--- Aetheris Diagnostics ---');
   outputChannel.appendLine(`Session ID: ${currentSession?.id}`);
   outputChannel.appendLine(`Recording Status: ${isRecording ? 'Active' : 'Paused'}`);
   outputChannel.appendLine(`Total Files: ${currentStats.totalFiles}, Connections: ${currentStats.totalConnections}`);
@@ -557,7 +557,7 @@ function showDiagnostics(): void {
 
 export function deactivate(): void {
   if (outputChannel) {
-    outputChannel.appendLine('[Agent Brain] Deactivating extension...');
+    outputChannel.appendLine('[Aetheris] Deactivating extension...');
   }
   vscodeAdapter?.dispose();
   copilotAdapter?.dispose();
