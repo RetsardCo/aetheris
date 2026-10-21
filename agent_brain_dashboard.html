@@ -113,6 +113,39 @@
       right: 16px;
     }
 
+    #projectTabBar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      flex-shrink: 0;
+      max-width: 48%;
+      min-width: 0;
+    }
+
+    #projectTabBar::-webkit-scrollbar {
+      display: none;
+    }
+
+    #thoughtBadgeBar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1 1 0%;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    #latestThoughtContent {
+      flex: 1 1 0%;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     /* Crisp High-Contrast HUD Glass - Zero Blurry Filters */
     .hud-glass {
       background: rgba(8, 14, 26, 0.76);
@@ -637,12 +670,12 @@
   <div id="cognitionDock" class="absolute bottom-2.5 left-4 right-4 z-30 apple-glass rounded-xl flex flex-col shadow-2xl transition-all duration-300">
     
     <!-- Dock Top Strip (Always Visible, Height 44px) -->
-    <div class="h-11 px-4 flex items-center justify-between text-xs border-b border-white/10">
+    <div class="h-11 px-4 flex items-center justify-between gap-3 text-xs border-b border-white/10 w-full overflow-hidden">
       
       <!-- Left: Multi-Project Tabs Strip -->
-      <div class="flex items-center gap-2 overflow-x-auto pr-2" id="projectTabBar">
+      <div class="flex items-center gap-2 overflow-x-auto shrink-0 max-w-[48%] min-w-0 scrollbar-none" id="projectTabBar" style="scrollbar-width: none; -ms-overflow-style: none;">
         <span class="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold mono mr-1 flex items-center gap-1.5 shrink-0">
-          <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="w-3.5 h-3.5 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
             <line x1="8" y1="21" x2="16" y2="21"></line>
             <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -655,32 +688,32 @@
       </div>
 
       <!-- Center: Antigravity Thought Badge (Signature Native Style) -->
-      <div id="thoughtBadgeBar" class="flex items-center gap-2.5 cursor-pointer px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition group shrink-0">
-        <div class="flex items-center gap-2">
-          <span id="thinkingDot" class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#00f0ff] animate-pulse"></span>
-          <div id="thoughtDurationBadge" class="thought-pill group-hover:border-cyan-400 transition">
+      <div id="thoughtBadgeBar" class="flex items-center gap-2.5 cursor-pointer px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition group flex-1 min-w-0 overflow-hidden">
+        <div class="flex items-center gap-2 shrink-0">
+          <span id="thinkingDot" class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#00f0ff] animate-pulse shrink-0"></span>
+          <div id="thoughtDurationBadge" class="thought-pill group-hover:border-cyan-400 transition shrink-0">
             <span id="thoughtDurationText">Thought for 25s</span>
-            <svg id="thoughtChevron" class="w-3.5 h-3.5 text-cyan-400 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg id="thoughtChevron" class="w-3.5 h-3.5 text-cyan-400 transition-transform duration-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
           </div>
         </div>
-        <span class="text-white/20">|</span>
-        <div id="latestThoughtContent" class="text-slate-200 mono text-[11px] truncate max-w-[34vw] italic">
+        <span class="text-white/20 shrink-0">|</span>
+        <div id="latestThoughtContent" class="text-slate-200 mono text-[11px] truncate flex-1 min-w-0 italic">
           "Observing workspace activity and listening to Antigravity live transcript telemetry..."
         </div>
       </div>
 
       <!-- Right Controls: Toggle Drawer & Step Counter -->
       <div class="flex items-center gap-2 shrink-0">
-        <span id="thinkingBadge" class="text-[10px] text-cyan-400 mono bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/80 font-bold">
+        <span id="thinkingBadge" class="text-[10px] text-cyan-400 mono bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/80 font-bold shrink-0">
           STEP #143
         </span>
-        <button id="btnToggleDock" class="text-[11px] text-cyan-300 hover:text-white mono bg-cyan-950/90 hover:bg-cyan-900 px-2.5 py-1 rounded border border-cyan-700/80 transition flex items-center gap-1.5 font-semibold">
+        <button id="btnToggleDock" class="text-[11px] text-cyan-300 hover:text-white mono bg-cyan-950/90 hover:bg-cyan-900 px-2.5 py-1 rounded border border-cyan-700/80 transition flex items-center gap-1.5 font-semibold shrink-0">
           <span id="dockToggleIcon">▲</span>
           <span id="dockToggleText">EXPAND REASONING</span>
         </button>
-        <button id="btnOpenThoughtModal" class="text-[10px] text-cyan-300 hover:text-white mono border border-cyan-800/80 bg-cyan-950/70 px-2 py-1 rounded font-semibold transition hover:bg-cyan-900">
+        <button id="btnOpenThoughtModal" class="text-[10px] text-cyan-300 hover:text-white mono border border-cyan-800/80 bg-cyan-950/70 px-2 py-1 rounded font-semibold transition hover:bg-cyan-900 shrink-0">
           ARCHIVE
         </button>
       </div>
@@ -2411,6 +2444,7 @@
     const dockToggleIcon = document.getElementById('dockToggleIcon');
     const dockToggleText = document.getElementById('dockToggleText');
     const cognitionDrawer = document.getElementById('cognitionDrawer');
+    const projectTabBar = document.getElementById('projectTabBar');
     const projectTabsContainer = document.getElementById('projectTabsContainer');
     const projectPanelsWrapper = document.getElementById('projectPanelsWrapper');
 
@@ -2473,6 +2507,14 @@
 
     if (btnToggleDock) btnToggleDock.addEventListener('click', toggleCognitionDock);
     if (thoughtBadgeBar) thoughtBadgeBar.addEventListener('click', toggleCognitionDock);
+    if (projectTabBar) {
+      projectTabBar.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          projectTabBar.scrollLeft += e.deltaY;
+        }
+      }, { passive: false });
+    }
 
     // Automatic 3D Node Highlighting with Ambient Energy Aura
     function highlightThoughtNodes(thoughtText, files = []) {

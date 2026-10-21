@@ -116,6 +116,20 @@ describe('Agent Brain 3D Dashboard & UI Verification', () => {
     expect(content).toContain('renderProjectPanels');
   });
 
+  it('guarantees distinct non-overlapping layout containers for project tabs and thought badge in cognition dock', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('projectTabsContainer');
+    expect(content).toContain('thoughtBadgeBar');
+    // Ensure projectTabBar is constrained with flex-shrink: 0 and horizontal scrolling
+    expect(content).toMatch(/#projectTabBar[\s\S]*?overflow-x:\s*auto/);
+    expect(content).toMatch(/#projectTabBar[\s\S]*?flex-shrink:\s*0/);
+    // Ensure thoughtBadgeBar flexes dynamically with min-width: 0 to prevent overlapping siblings
+    expect(content).toMatch(/#thoughtBadgeBar[\s\S]*?flex:\s*1\s+1/);
+    expect(content).toMatch(/#thoughtBadgeBar[\s\S]*?min-width:\s*0/);
+    // Ensure latestThoughtContent truncates gracefully
+    expect(content).toMatch(/#latestThoughtContent[\s\S]*?text-overflow:\s*ellipsis/);
+  });
+
   it('unblocks the center 3D canvas viewport by removing center-blocking floating panels', () => {
     const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
     expect(content).toContain('viewportCanvas');
