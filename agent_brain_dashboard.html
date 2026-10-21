@@ -441,7 +441,8 @@
 
   <!-- FULL VIEWPORT 3D BACKGROUND CANVAS (Whole Background Observable & Zoomable) -->
   <div id="canvasContainer" class="absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-auto">
-    <canvas id="viewportCanvas" class="w-full h-full cursor-grab active:cursor-grabbing block"></canvas>
+    <canvas id="viewportCanvasGL" class="absolute inset-0 w-full h-full block pointer-events-none"></canvas>
+    <canvas id="viewportCanvas" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing block"></canvas>
   </div>
 
   <!-- FLOATING HUD RETICLE OVERLAYS (Central Space 100% Unobstructed) -->
@@ -582,8 +583,12 @@
           <div id="perfModeSelector" class="flex items-center gap-1">
             <button id="btnPerfHigh" data-mode="high" class="px-1.5 py-0.5 rounded text-[9px] font-bold border border-white/10 text-slate-400 hover:text-white transition">HIGH</button>
             <button id="btnPerfBalanced" data-mode="balanced" class="px-1.5 py-0.5 rounded text-[9px] font-bold border border-cyan-500/50 bg-cyan-950/70 text-cyan-300 transition">BALANCED</button>
-            <button id="btnPerfPerformance" data-mode="turbo" class="px-1.5 py-0.5 rounded text-[9px] font-bold border border-white/10 text-slate-400 hover:text-white transition">TURBO</button>
+            <button id="btnPerfPerformance" data-mode="turbo" class="px-1.5 py-0.5 rounded text-[9px] font-bold border border-white/10 text-slate-400 hover:text-white transition" title="Ultra Performance / WebGL Accelerated">TURBO</button>
           </div>
+        </div>
+        <div class="flex justify-between items-center text-slate-300 pt-1 text-[10px]">
+          <span class="font-bold">PIPELINE:</span>
+          <span id="telemetryEngine" class="text-cyan-400 font-bold">WEBGL2 HARDWARE</span>
         </div>
       </div>
 
@@ -872,16 +877,19 @@
   <!-- AETHERIS 3D CONSTELLATION & WEBAUDIO ENGINE -->
   <script>
     // =========================================================================
-    // 1. CANVAS SETUP & RETINA RESOLUTION HANDLING
+    // 1. DUAL CANVAS SETUP & HARDWARE WEBGL / 2D FALLBACK PIPELINE
     // =========================================================================
     const canvas = document.getElementById('viewportCanvas');
+    const glCanvas = document.getElementById('viewportCanvasGL');
     const container = document.getElementById('canvasContainer');
     const ctx = canvas.getContext('2d');
+    let gl = null;
+    let isWebGLActive = false;
 
     let width = 800;
     let height = 600;
 
-    // Performance & Graphics Quality Settings (High / Balanced / Turbo)
+    // Performance & Graphics Quality Settings (High / Balanced / Turbo - WebGL Accelerated)
     const QualitySettings = {
       high: {
         name: 'HIGH',
@@ -894,7 +902,8 @@
         fullLabels: true,
         spatialEdgeCulling: true,
         edgeLOD: true,
-        adaptiveLOD: false
+        adaptiveLOD: false,
+        useWebGL: true
       },
       balanced: {
         name: 'BALANCED',
@@ -907,7 +916,8 @@
         fullLabels: false,
         spatialEdgeCulling: true,
         edgeLOD: true,
-        adaptiveLOD: false
+        adaptiveLOD: false,
+        useWebGL: true
       },
       turbo: {
         name: 'TURBO',
@@ -920,7 +930,8 @@
         fullLabels: false,
         spatialEdgeCulling: true,
         edgeLOD: true,
-        adaptiveLOD: true
+        adaptiveLOD: true,
+        useWebGL: true
       }
     };
 
@@ -929,6 +940,19 @@
       const savedQ = localStorage.getItem('aetheris_quality') || localStorage.getItem('agent_brain_quality');
       if (savedQ && QualitySettings[savedQ]) currentQuality = savedQ;
     } catch (_) {}
+
+    function updateEngineTelemetry() {
+      const el = document.getElementById('telemetryEngine');
+      if (el) {
+        if (isWebGLActive && QualitySettings[currentQuality]?.useWebGL !== false) {
+          el.textContent = 'WEBGL2 (HARDWARE)';
+          el.className = 'text-cyan-400 font-bold';
+        } else {
+          el.textContent = 'CANVAS 2D (FALLBACK)';
+          el.className = 'text-amber-400 font-bold';
+        }
+      }
+    }
 
     function resize() {
       width = Math.max(300, Math.floor(window.innerWidth || (container && container.clientWidth) || 800));
@@ -943,6 +967,14 @@
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
+
+      if (glCanvas && gl) {
+        glCanvas.width = Math.floor(width * dpr);
+        glCanvas.height = Math.floor(height * dpr);
+        glCanvas.style.width = width + 'px';
+        glCanvas.style.height = height + 'px';
+        gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+      }
     }
 
     if (window.ResizeObserver && container) {
@@ -1475,6 +1507,42 @@
     let edges = [];
     const nodeMap = new Map();
 
+    // Continuous Float32Array typed arrays for zero-allocation physics & GPU vertex streams
+    const MAX_TYPED_NODES = 4096;
+    const nodePositions3D = new Float32Array(MAX_TYPED_NODES * 3);
+    const nodeVelocities3D = new Float32Array(MAX_TYPED_NODES * 3);
+    const nodeTargets3D = new Float32Array(MAX_TYPED_NODES * 3);
+    const nodeProjections2D = new Float32Array(MAX_TYPED_NODES * 4);
+    const nodeColorsRGBA = new Float32Array(MAX_TYPED_NODES * 4);
+
+    const colorRgbaCache = new Map();
+    function parseColorToRgba(str) {
+      if (!str) return [0.22, 0.74, 0.97, 1.0];
+      let c = colorRgbaCache.get(str);
+      if (c) return c;
+      if (str.startsWith('#')) {
+        let hex = str.slice(1);
+        if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        const num = parseInt(hex.slice(0, 6), 16) || 0;
+        const r = ((num >> 16) & 255) / 255;
+        const g = ((num >> 8) & 255) / 255;
+        const b = (num & 255) / 255;
+        const a = hex.length >= 8 ? (parseInt(hex.slice(6, 8), 16) / 255) : 1.0;
+        c = [r, g, b, a];
+      } else if (str.startsWith('rgba') || str.startsWith('rgb')) {
+        const m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d\.]+))?\)/);
+        if (m) {
+          c = [parseInt(m[1])/255, parseInt(m[2])/255, parseInt(m[3])/255, m[4] !== undefined ? parseFloat(m[4]) : 1.0];
+        } else {
+          c = [0.22, 0.74, 0.97, 1.0];
+        }
+      } else {
+        c = [0.22, 0.74, 0.97, 1.0];
+      }
+      colorRgbaCache.set(str, c);
+      return c;
+    }
+
     const clusterColors = {
       'core-engine': '#38bdf8',          // Electric Cyan
       'webview': '#818cf8',              // Cyber Indigo
@@ -1555,8 +1623,26 @@
           vy: 0,
           vz: 0,
           pulse: Math.PI * 2,
-          snippet: nodeData.snippet || ''
+          snippet: nodeData.snippet || '',
+          _idx: nodes.length
         };
+        const i3 = n._idx * 3;
+        if (i3 + 2 < MAX_TYPED_NODES * 3) {
+          nodePositions3D[i3] = tx;
+          nodePositions3D[i3 + 1] = ty;
+          nodePositions3D[i3 + 2] = tz;
+          nodeTargets3D[i3] = tx;
+          nodeTargets3D[i3 + 1] = ty;
+          nodeTargets3D[i3 + 2] = tz;
+          nodeVelocities3D[i3] = 0;
+          nodeVelocities3D[i3 + 1] = 0;
+          nodeVelocities3D[i3 + 2] = 0;
+          const rgba = parseColorToRgba(n.color);
+          nodeColorsRGBA[n._idx * 4] = rgba[0];
+          nodeColorsRGBA[n._idx * 4 + 1] = rgba[1];
+          nodeColorsRGBA[n._idx * 4 + 2] = rgba[2];
+          nodeColorsRGBA[n._idx * 4 + 3] = rgba[3];
+        }
         nodeMap.set(n.id, n);
         nodes.push(n);
 
@@ -1584,6 +1670,18 @@
         if (nodeData.targetX !== undefined) existing.targetX = nodeData.targetX;
         if (nodeData.targetY !== undefined) existing.targetY = nodeData.targetY;
         if (nodeData.targetZ !== undefined) existing.targetZ = nodeData.targetZ;
+        if (existing._idx !== undefined) {
+          const i3 = existing._idx * 3;
+          if (nodeData.targetX !== undefined) nodeTargets3D[i3] = nodeData.targetX;
+          if (nodeData.targetY !== undefined) nodeTargets3D[i3 + 1] = nodeData.targetY;
+          if (nodeData.targetZ !== undefined) nodeTargets3D[i3 + 2] = nodeData.targetZ;
+          if (nodeData.color) {
+            const rgba = parseColorToRgba(existing.color);
+            nodeColorsRGBA[existing._idx * 4] = rgba[0];
+            nodeColorsRGBA[existing._idx * 4 + 1] = rgba[1];
+            nodeColorsRGBA[existing._idx * 4 + 2] = rgba[2];
+          }
+        }
 
         // Spawn signal packet to random peer
         const peer = nodes[Math.floor(Math.random() * nodes.length)];
@@ -1689,8 +1787,284 @@
     }
 
     // =========================================================================
-    // 5. HIGH-PERFORMANCE 60-144 FPS TRUE 3D RENDER ENGINE (BATCHED PIPELINE)
+    // 5. HIGH-PERFORMANCE 60-144 FPS TRUE 3D RENDER ENGINE (HARDWARE WEBGL & 2D FALLBACK)
     // =========================================================================
+    const VS_LINE_GLSL = `
+attribute vec3 aPosition;
+attribute vec4 aColor;
+
+uniform vec2 uViewport;
+uniform vec3 uLookAt;
+uniform vec2 uAngles;
+uniform float uDist;
+uniform vec2 uPan;
+uniform float uFov;
+
+varying vec4 vColor;
+
+void main() {
+  vColor = aColor;
+
+  vec3 rel = aPosition - uLookAt;
+  float cosY = cos(uAngles.x);
+  float sinY = sin(uAngles.x);
+  float x1 = rel.x * cosY + rel.z * sinY;
+  float z1 = -rel.x * sinY + rel.z * cosY;
+
+  float cosP = cos(uAngles.y);
+  float sinP = sin(uAngles.y);
+  float y2 = rel.y * cosP - z1 * sinP;
+  float z2 = rel.y * sinP + z1 * cosP;
+
+  float camZ = z2 + uDist;
+  float w = max(camZ, 1.0);
+
+  float screenX = (uViewport.x * 0.5) + (x1 * (uFov / w)) + uPan.x;
+  float screenY = (uViewport.y * 0.5) + (y2 * (uFov / w)) + uPan.y;
+
+  float ndcX = (screenX / (uViewport.x * 0.5)) - 1.0;
+  float ndcY = 1.0 - (screenY / (uViewport.y * 0.5));
+  float ndcZ = clamp((camZ - 20.0) / 4000.0, -1.0, 1.0);
+
+  gl_Position = vec4(ndcX * w, ndcY * w, ndcZ * w, w);
+}
+`;
+
+    const FS_LINE_GLSL = `
+precision mediump float;
+varying vec4 vColor;
+void main() {
+  gl_FragColor = vColor;
+}
+`;
+
+    const VS_POINT_GLSL = `
+attribute vec3 aPosition;
+attribute vec4 aColor;
+attribute float aSize;
+attribute float aType;
+
+uniform vec2 uViewport;
+uniform vec3 uLookAt;
+uniform vec2 uAngles;
+uniform float uDist;
+uniform vec2 uPan;
+uniform float uFov;
+
+varying vec4 vColor;
+varying float vType;
+
+void main() {
+  vColor = aColor;
+  vType = aType;
+
+  vec3 rel = aPosition - uLookAt;
+  float cosY = cos(uAngles.x);
+  float sinY = sin(uAngles.x);
+  float x1 = rel.x * cosY + rel.z * sinY;
+  float z1 = -rel.x * sinY + rel.z * cosY;
+
+  float cosP = cos(uAngles.y);
+  float sinP = sin(uAngles.y);
+  float y2 = rel.y * cosP - z1 * sinP;
+  float z2 = rel.y * sinP + z1 * cosP;
+
+  float camZ = z2 + uDist;
+  float w = max(camZ, 1.0);
+
+  float screenX = (uViewport.x * 0.5) + (x1 * (uFov / w)) + uPan.x;
+  float screenY = (uViewport.y * 0.5) + (y2 * (uFov / w)) + uPan.y;
+
+  float ndcX = (screenX / (uViewport.x * 0.5)) - 1.0;
+  float ndcY = 1.0 - (screenY / (uViewport.y * 0.5));
+  float ndcZ = clamp((camZ - 20.0) / 4000.0, -1.0, 1.0);
+
+  gl_Position = vec4(ndcX * w, ndcY * w, ndcZ * w, w);
+
+  float scale = uFov / w;
+  gl_PointSize = clamp(aSize * scale * 1.15, 1.0, 128.0);
+}
+`;
+
+    const FS_POINT_GLSL = `
+precision mediump float;
+varying vec4 vColor;
+varying float vType;
+
+void main() {
+  vec2 coord = gl_PointCoord - vec2(0.5);
+  float dist = length(coord) * 2.0;
+  if (dist > 1.0) discard;
+
+  if (vType < 0.5) {
+    float alpha = (1.0 - smoothstep(0.3, 1.0, dist)) * vColor.a;
+    gl_FragColor = vec4(vColor.rgb, alpha);
+  } else if (vType < 1.5) {
+    float alpha = pow(max(0.0, 1.0 - dist), 1.8) * vColor.a * 0.7;
+    gl_FragColor = vec4(vColor.rgb, alpha);
+  } else if (vType < 2.5) {
+    float alpha = (1.0 - smoothstep(0.7, 1.0, dist)) * vColor.a;
+    vec3 rgb = mix(vColor.rgb, vec3(1.0), 0.35 * (1.0 - dist));
+    gl_FragColor = vec4(rgb, alpha);
+  } else {
+    float core = 1.0 - smoothstep(0.0, 0.5, dist);
+    vec3 col = mix(vColor.rgb, vec3(1.0), core);
+    float alpha = (1.0 - dist * dist) * vColor.a;
+    gl_FragColor = vec4(col, alpha);
+  }
+}
+`;
+
+    let glPointProg = null;
+    let glLineProg = null;
+    let glLineVBO = null;
+    let glPointVBO = null;
+    let glStarVBO = null;
+    const MAX_WEBGL_LINES = 12000;
+    const glLineVertexArray = new Float32Array(MAX_WEBGL_LINES * 2 * 7);
+    let glLineVertexCount = 0;
+
+    const MAX_WEBGL_POINTS = 6000;
+    const glPointVertexArray = new Float32Array(MAX_WEBGL_POINTS * 9);
+    let glPointVertexCount = 0;
+
+    function createGLShader(glCtx, type, src) {
+      const s = glCtx.createShader(type);
+      glCtx.shaderSource(s, src);
+      glCtx.compileShader(s);
+      if (!glCtx.getShaderParameter(s, glCtx.COMPILE_STATUS)) {
+        const info = glCtx.getShaderInfoLog(s);
+        glCtx.deleteShader(s);
+        throw new Error(info);
+      }
+      return s;
+    }
+
+    function createGLProgram(glCtx, vsSrc, fsSrc) {
+      const vs = createGLShader(glCtx, glCtx.VERTEX_SHADER, vsSrc);
+      const fs = createGLShader(glCtx, glCtx.FRAGMENT_SHADER, fsSrc);
+      const prog = glCtx.createProgram();
+      glCtx.attachShader(prog, vs);
+      glCtx.attachShader(prog, fs);
+      glCtx.linkProgram(prog);
+      if (!glCtx.getProgramParameter(prog, glCtx.LINK_STATUS)) {
+        const info = glCtx.getProgramInfoLog(prog);
+        glCtx.deleteProgram(prog);
+        throw new Error(info);
+      }
+      return prog;
+    }
+
+    function initGLStarfield() {
+      if (!gl) return;
+      const starData = new Float32Array(backgroundStars3D.length * 9);
+      for (let i = 0; i < backgroundStars3D.length; i++) {
+        const s = backgroundStars3D[i];
+        const ptr = i * 9;
+        starData[ptr] = s.x;
+        starData[ptr + 1] = s.y;
+        starData[ptr + 2] = s.z;
+        starData[ptr + 3] = 0.88;
+        starData[ptr + 4] = 0.91;
+        starData[ptr + 5] = 0.94;
+        starData[ptr + 6] = s.alpha || 0.6;
+        starData[ptr + 7] = s.size || 1.2;
+        starData[ptr + 8] = 0.0;
+      }
+      glStarVBO = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, glStarVBO);
+      gl.bufferData(gl.ARRAY_BUFFER, starData, gl.STATIC_DRAW);
+    }
+
+    function initWebGL() {
+      if (!glCanvas) return false;
+      try {
+        gl = glCanvas.getContext('webgl2', { alpha: true, antialias: true, depth: false }) ||
+             glCanvas.getContext('webgl', { alpha: true, antialias: true, depth: false });
+        if (!gl) return false;
+
+        glLineProg = createGLProgram(gl, VS_LINE_GLSL, FS_LINE_GLSL);
+        glPointProg = createGLProgram(gl, VS_POINT_GLSL, FS_POINT_GLSL);
+
+        glLineVBO = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, glLineVBO);
+        gl.bufferData(gl.ARRAY_BUFFER, glLineVertexArray.byteLength, gl.DYNAMIC_DRAW);
+
+        glPointVBO = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, glPointVBO);
+        gl.bufferData(gl.ARRAY_BUFFER, glPointVertexArray.byteLength, gl.DYNAMIC_DRAW);
+
+        initGLStarfield();
+
+        glCanvas.addEventListener('webglcontextlost', (e) => {
+          e.preventDefault();
+          isWebGLActive = false;
+          updateEngineTelemetry();
+        }, false);
+
+        glCanvas.addEventListener('webglcontextrestored', () => {
+          initWebGL();
+        }, false);
+
+        isWebGLActive = true;
+        updateEngineTelemetry();
+        resize();
+        return true;
+      } catch (err) {
+        console.warn('WebGL hardware initialization fallback to Canvas 2D:', err);
+        isWebGLActive = false;
+        updateEngineTelemetry();
+        return false;
+      }
+    }
+
+    function addGLLine(x1, y1, z1, x2, y2, z2, r, g, b, a) {
+      if (glLineVertexCount + 2 > MAX_WEBGL_LINES * 2) return;
+      let ptr = glLineVertexCount * 7;
+      glLineVertexArray[ptr] = x1;
+      glLineVertexArray[ptr + 1] = y1;
+      glLineVertexArray[ptr + 2] = z1;
+      glLineVertexArray[ptr + 3] = r;
+      glLineVertexArray[ptr + 4] = g;
+      glLineVertexArray[ptr + 5] = b;
+      glLineVertexArray[ptr + 6] = a;
+
+      glLineVertexArray[ptr + 7] = x2;
+      glLineVertexArray[ptr + 8] = y2;
+      glLineVertexArray[ptr + 9] = z2;
+      glLineVertexArray[ptr + 10] = r;
+      glLineVertexArray[ptr + 11] = g;
+      glLineVertexArray[ptr + 12] = b;
+      glLineVertexArray[ptr + 13] = a;
+      glLineVertexCount += 2;
+    }
+
+    function addGLPoint(x, y, z, r, g, b, a, size, type) {
+      if (glPointVertexCount >= MAX_WEBGL_POINTS) return;
+      let ptr = glPointVertexCount * 9;
+      glPointVertexArray[ptr] = x;
+      glPointVertexArray[ptr + 1] = y;
+      glPointVertexArray[ptr + 2] = z;
+      glPointVertexArray[ptr + 3] = r;
+      glPointVertexArray[ptr + 4] = g;
+      glPointVertexArray[ptr + 5] = b;
+      glPointVertexArray[ptr + 6] = a;
+      glPointVertexArray[ptr + 7] = size;
+      glPointVertexArray[ptr + 8] = type;
+      glPointVertexCount++;
+    }
+
+    function setGLCameraUniforms(prog) {
+      gl.uniform2f(gl.getUniformLocation(prog, 'uViewport'), width, height);
+      gl.uniform3f(gl.getUniformLocation(prog, 'uLookAt'), camera.lookAtX, camera.lookAtY, camera.lookAtZ);
+      gl.uniform2f(gl.getUniformLocation(prog, 'uAngles'), camera.yaw, camera.pitch);
+      gl.uniform1f(gl.getUniformLocation(prog, 'uDist'), camera.dist);
+      gl.uniform2f(gl.getUniformLocation(prog, 'uPan'), camera.panX, camera.panY);
+      gl.uniform1f(gl.getUniformLocation(prog, 'uFov'), camera.fov);
+    }
+
+    setTimeout(() => { initWebGL(); }, 0);
+
     let lastFrameTime = performance.now();
     let frameCount = 0;
     let fpsTimer = performance.now();
@@ -1770,6 +2144,7 @@
           }
         }
       });
+      updateEngineTelemetry();
       resize();
     }
 
@@ -1854,30 +2229,470 @@
       // Clear Canvas
       ctx.clearRect(0, 0, width, height);
 
-      // Physics Simulation for 3D Nodes
+      // Physics Simulation for 3D Nodes via continuous Float32Array arrays (zero allocation)
       const spring = 0.0035;
       const damping = 0.94;
+      const nodeCount = nodes.length;
 
-      for (let i = 0; i < nodes.length; i++) {
+      for (let i = 0; i < nodeCount; i++) {
+        const i3 = i * 3;
+        nodeVelocities3D[i3]     += (nodeTargets3D[i3]     - nodePositions3D[i3])     * spring;
+        nodeVelocities3D[i3 + 1] += (nodeTargets3D[i3 + 1] - nodePositions3D[i3 + 1]) * spring;
+        nodeVelocities3D[i3 + 2] += (nodeTargets3D[i3 + 2] - nodePositions3D[i3 + 2]) * spring;
+
+        nodeVelocities3D[i3]     *= damping;
+        nodeVelocities3D[i3 + 1] *= damping;
+        nodeVelocities3D[i3 + 2] *= damping;
+
+        nodePositions3D[i3]     += nodeVelocities3D[i3];
+        nodePositions3D[i3 + 1] += nodeVelocities3D[i3 + 1];
+        nodePositions3D[i3 + 2] += nodeVelocities3D[i3 + 2];
+
         const n = nodes[i];
-        n.vx += (n.targetX - n.x) * spring;
-        n.vy += (n.targetY - n.y) * spring;
-        n.vz += (n.targetZ - n.z) * spring;
-
-        n.vx *= damping;
-        n.vy *= damping;
-        n.vz *= damping;
-
-        n.x += n.vx;
-        n.y += n.vy;
-        n.z += n.vz;
+        n.x = nodePositions3D[i3];
+        n.y = nodePositions3D[i3 + 1];
+        n.z = nodePositions3D[i3 + 2];
+        n.vx = nodeVelocities3D[i3];
+        n.vy = nodeVelocities3D[i3 + 1];
+        n.vz = nodeVelocities3D[i3 + 2];
 
         if (n.pulse > 0) n.pulse = Math.max(0, n.pulse - 0.045);
 
         // Pre-project node into 2D screen space (Zero-allocation in-place buffer)
         n._proj = project3D(n.x, n.y, n.z, n._proj);
+        if (n._proj) {
+          const i4 = i * 4;
+          nodeProjections2D[i4]     = n._proj.x;
+          nodeProjections2D[i4 + 1] = n._proj.y;
+          nodeProjections2D[i4 + 2] = n._proj.z;
+          nodeProjections2D[i4 + 3] = n._proj.depthFactor;
+        }
       }
 
+      const useHardwareGL = isWebGLActive && cfg.useWebGL;
+
+      if (useHardwareGL) {
+        if (glCanvas) glCanvas.style.display = 'block';
+        renderWebGLHardware(now, cfg);
+        render2DOverlay(now, cfg);
+      } else {
+        if (glCanvas) glCanvas.style.display = 'none';
+        renderCanvas2DFallback(now, cfg);
+      }
+    }
+
+    // Hardware Accelerated WebGL GPU Pipeline (Fewer than 5 GPU draw calls!)
+    function renderWebGLHardware(now, cfg) {
+      if (!gl || !isWebGLActive) return;
+
+      gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+      gl.clearColor(0.02, 0.04, 0.09, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      glLineVertexCount = 0;
+      glPointVertexCount = 0;
+
+      // 1. Latitude rings
+      const ringSegs = cfg.cageSegments || 20;
+      for (let r = 0; r < RING_RADII.length; r++) {
+        const rad = RING_RADII[r];
+        for (let i = 0; i < ringSegs; i++) {
+          const a1 = (i / ringSegs) * Math.PI * 2;
+          const a2 = ((i + 1) / ringSegs) * Math.PI * 2;
+          addGLLine(
+            Math.cos(a1) * rad, 0, Math.sin(a1) * rad,
+            Math.cos(a2) * rad, 0, Math.sin(a2) * rad,
+            0.02, 0.71, 0.83, 0.12
+          );
+        }
+      }
+
+      // 2. Gyroscope Octahedron Core & Luminous Rays
+      gyroAngleX += 0.012;
+      gyroAngleY += 0.016;
+      gyroAngleZ += 0.009;
+      corePulse += 0.035;
+      const reactorScale = 1.0 + Math.sin(corePulse) * 0.08;
+
+      for (let i = 0; i < clusterCentroidsList.length; i++) {
+        const cc = clusterCentroidsList[i];
+        addGLLine(0, 0, 0, cc.cx, cc.cy, cc.cz, 0.22, 0.74, 0.97, 0.14);
+      }
+
+      const cosA = Math.cos(gyroAngleY), sinA = Math.sin(gyroAngleY);
+      for (let e = 0; e < octaEdges3D.length; e++) {
+        const [i, j] = octaEdges3D[e];
+        const v1 = octaVertices3D[i];
+        const v2 = octaVertices3D[j];
+        const x1 = (v1.x * cosA - v1.z * sinA) * reactorScale;
+        const z1 = (v1.x * sinA + v1.z * cosA) * reactorScale;
+        const y1 = v1.y * reactorScale;
+        const x2 = (v2.x * cosA - v2.z * sinA) * reactorScale;
+        const z2 = (v2.x * sinA + v2.z * cosA) * reactorScale;
+        const y2 = v2.y * reactorScale;
+        addGLLine(x1, y1, z1, x2, y2, z2, 0.0, 0.94, 1.0, 0.85);
+      }
+
+      // Singularity core points
+      addGLPoint(0, 0, 0, 0.0, 0.94, 1.0, 0.90, 48.0 * reactorScale, 1.0);
+      addGLPoint(0, 0, 0, 0.96, 0.62, 0.04, 0.85, 22.0 * reactorScale, 2.0);
+
+      // 3. Cluster cages & rings
+      const showHulls = chkClusterHullsEl ? chkClusterHullsEl.checked : true;
+      if (showHulls) {
+        clusterGroups.forEach(grp => grp.length = 0);
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          let grp = clusterGroups.get(n.cluster);
+          if (!grp) {
+            grp = [];
+            clusterGroups.set(n.cluster, grp);
+          }
+          grp.push(n);
+        }
+
+        clusterGroups.forEach((cNodes, cName) => {
+          if (cNodes.length >= 2) {
+            const cInfo = clusterCentroids[cName] || { cx: 0, cy: 0, cz: 0, rad: 150 };
+            const [cr, cg, cb] = parseColorToRgba(clusterColors[cName] || '#38bdf8');
+            const ringPts = cfg.cageSegments || 20;
+            const ringRad = cInfo.rad * 0.95;
+
+            for (let i = 0; i < ringPts; i++) {
+              const a1 = (i / ringPts) * Math.PI * 2;
+              const a2 = ((i + 1) / ringPts) * Math.PI * 2;
+              const x1 = cInfo.cx + Math.cos(a1) * ringRad;
+              const y1 = cInfo.cy + Math.sin(a1) * ringRad * 0.4;
+              const z1 = cInfo.cz + Math.sin(a1) * ringRad * 0.9;
+              const x2 = cInfo.cx + Math.cos(a2) * ringRad;
+              const y2 = cInfo.cy + Math.sin(a2) * ringRad * 0.4;
+              const z2 = cInfo.cz + Math.sin(a2) * ringRad * 0.9;
+              addGLLine(x1, y1, z1, x2, y2, z2, cr, cg, cb, 0.28);
+            }
+
+            const cv = [
+              [cInfo.cx, cInfo.cy - cInfo.rad * 0.7, cInfo.cz],
+              [cInfo.cx + cInfo.rad * 0.7, cInfo.cy, cInfo.cz + cInfo.rad * 0.7],
+              [cInfo.cx - cInfo.rad * 0.7, cInfo.cy, cInfo.cz + cInfo.rad * 0.7],
+              [cInfo.cx - cInfo.rad * 0.7, cInfo.cy, cInfo.cz - cInfo.rad * 0.7],
+              [cInfo.cx + cInfo.rad * 0.7, cInfo.cy, cInfo.cz - cInfo.rad * 0.7],
+              [cInfo.cx, cInfo.cy + cInfo.rad * 0.7, cInfo.cz]
+            ];
+            for (let e = 0; e < cageEdges.length; e++) {
+              const [i1, i2] = cageEdges[e];
+              addGLLine(cv[i1][0], cv[i1][1], cv[i1][2], cv[i2][0], cv[i2][1], cv[i2][2], cr, cg, cb, 0.20);
+            }
+
+            for (let i = 0; i < cNodes.length; i++) {
+              const nA = cNodes[i];
+              for (let step = 1; step <= 2 && i + step < cNodes.length; step++) {
+                const nB = cNodes[i + step];
+                addGLLine(nA.x, nA.y, nA.z, nB.x, nB.y, nB.z, cr, cg, cb, 0.32);
+              }
+            }
+          }
+        });
+      }
+
+      // 4. Luminous connections web
+      const showConnections = chkConnectionsEl ? chkConnectionsEl.checked : true;
+      if (showConnections) {
+        for (let i = 0; i < edges.length; i++) {
+          const e = edges[i];
+          const n1 = nodeMap.get(e.source);
+          const n2 = nodeMap.get(e.target);
+          if (!n1 || !n2) continue;
+          const isHighlighted = (n1 === hoveredNode || n2 === hoveredNode || n1 === selectedNode || n2 === selectedNode || n1 === trackingNode || n2 === trackingNode || n1._shockwaveStatus || n2._shockwaveStatus || n1._collisionHazard || n2._collisionHazard);
+          if (isHighlighted) {
+            addGLLine(n1.x, n1.y, n1.z, n2.x, n2.y, n2.z, 0.0, 0.94, 1.0, 0.92);
+          } else {
+            const [er, eg, eb] = parseColorToRgba(n1.color || '#38bdf8');
+            addGLLine(n1.x, n1.y, n1.z, n2.x, n2.y, n2.z, er, eg, eb, 0.35);
+          }
+        }
+      }
+
+      // 5. Energy packets & comets
+      for (let i = energyPackets.length - 1; i >= 0; i--) {
+        const pkt = energyPackets[i];
+        pkt.progress += pkt.speed;
+        if (pkt.progress >= 1.0) {
+          energyPackets.splice(i, 1);
+          continue;
+        }
+        const px = pkt.source.x + (pkt.target.x - pkt.source.x) * pkt.progress;
+        const py = pkt.source.y + (pkt.target.y - pkt.source.y) * pkt.progress;
+        const pz = pkt.source.z + (pkt.target.z - pkt.source.z) * pkt.progress;
+        const [pr, pg, pb] = parseColorToRgba(pkt.color || '#00f0ff');
+        addGLPoint(px, py, pz, pr, pg, pb, 1.0, 7.0, 3.0);
+      }
+
+      for (let cIdx = 0; cIdx < comets3D.length; cIdx++) {
+        const c = comets3D[cIdx];
+        c.angle += c.speed;
+        const u = Math.cos(c.angle) * c.radA;
+        const v = Math.sin(c.angle) * c.radB;
+        const cx = u;
+        const cy = v * Math.cos(c.tiltX);
+        const cz = v * Math.sin(c.tiltX);
+        const [cr, cg, cb] = parseColorToRgba(c.color);
+        addGLPoint(cx, cy, cz, cr, cg, cb, 1.0, 9.0, 3.0);
+      }
+
+      // 6. Nodes (Halos + Cores + Auras)
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        const isHovered = (n === hoveredNode);
+        const isSelected = (n === selectedNode || n === trackingNode);
+        const hasThoughtAura = (n._thoughtAura && n._thoughtAura > 0.02);
+        const [nr, ng, nb] = parseColorToRgba(n.color || '#38bdf8');
+        const baseSize = (isHovered ? n.size * 1.35 : n.size) * 2.0;
+
+        if (cfg.useSprites && (isHovered || n.pulse > 0 || hasThoughtAura || n.size > 5)) {
+          const haloAlpha = (isHovered || n.pulse > 0 || hasThoughtAura) ? 0.95 : 0.65;
+          addGLPoint(n.x, n.y, n.z, nr, ng, nb, haloAlpha, baseSize * 2.3, 1.0);
+        }
+        const coreAlpha = isHovered ? 0.98 : (isSelected ? 1.0 : (hasThoughtAura ? 0.92 : 0.75));
+        addGLPoint(n.x, n.y, n.z, nr, ng, nb, coreAlpha, baseSize, 2.0);
+
+        if (hasThoughtAura) {
+          addGLPoint(n.x, n.y, n.z, 0.0, 0.94, 1.0, n._thoughtAura * 0.85, baseSize * 3.2, 1.0);
+          n._thoughtAura *= 0.993;
+        }
+      }
+
+      // --- GPU HARDWARE DRAW CALLS ---
+      // 1. Draw Static Starfield
+      if (glStarVBO && backgroundStars3D.length > 0) {
+        gl.useProgram(glPointProg);
+        setGLCameraUniforms(glPointProg);
+        gl.bindBuffer(gl.ARRAY_BUFFER, glStarVBO);
+        const stride = 9 * 4;
+        const aPos = gl.getAttribLocation(glPointProg, 'aPosition');
+        const aCol = gl.getAttribLocation(glPointProg, 'aColor');
+        const aSize = gl.getAttribLocation(glPointProg, 'aSize');
+        const aType = gl.getAttribLocation(glPointProg, 'aType');
+
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, stride, 0);
+        gl.enableVertexAttribArray(aCol);
+        gl.vertexAttribPointer(aCol, 4, gl.FLOAT, false, stride, 3 * 4);
+        gl.enableVertexAttribArray(aSize);
+        gl.vertexAttribPointer(aSize, 1, gl.FLOAT, false, stride, 7 * 4);
+        gl.enableVertexAttribArray(aType);
+        gl.vertexAttribPointer(aType, 1, gl.FLOAT, false, stride, 8 * 4);
+
+        gl.drawArrays(gl.POINTS, 0, backgroundStars3D.length);
+      }
+
+      // 2. Draw Batched Lines
+      if (glLineVertexCount > 0) {
+        gl.useProgram(glLineProg);
+        setGLCameraUniforms(glLineProg);
+        gl.bindBuffer(gl.ARRAY_BUFFER, glLineVBO);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, glLineVertexArray.subarray(0, glLineVertexCount * 7));
+
+        const stride = 7 * 4;
+        const aPos = gl.getAttribLocation(glLineProg, 'aPosition');
+        const aCol = gl.getAttribLocation(glLineProg, 'aColor');
+
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, stride, 0);
+        gl.enableVertexAttribArray(aCol);
+        gl.vertexAttribPointer(aCol, 4, gl.FLOAT, false, stride, 3 * 4);
+
+        gl.drawArrays(gl.LINES, 0, glLineVertexCount);
+      }
+
+      // 3. Draw Batched Points
+      if (glPointVertexCount > 0) {
+        gl.useProgram(glPointProg);
+        setGLCameraUniforms(glPointProg);
+        gl.bindBuffer(gl.ARRAY_BUFFER, glPointVBO);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, glPointVertexArray.subarray(0, glPointVertexCount * 9));
+
+        const stride = 9 * 4;
+        const aPos = gl.getAttribLocation(glPointProg, 'aPosition');
+        const aCol = gl.getAttribLocation(glPointProg, 'aColor');
+        const aSize = gl.getAttribLocation(glPointProg, 'aSize');
+        const aType = gl.getAttribLocation(glPointProg, 'aType');
+
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, stride, 0);
+        gl.enableVertexAttribArray(aCol);
+        gl.vertexAttribPointer(aCol, 4, gl.FLOAT, false, stride, 3 * 4);
+        gl.enableVertexAttribArray(aSize);
+        gl.vertexAttribPointer(aSize, 1, gl.FLOAT, false, stride, 7 * 4);
+        gl.enableVertexAttribArray(aType);
+        gl.vertexAttribPointer(aType, 1, gl.FLOAT, false, stride, 8 * 4);
+
+        gl.drawArrays(gl.POINTS, 0, glPointVertexCount);
+      }
+    }
+
+    // 2D Overlay for Text Labels, Badges & Reticles (Runs smoothly on top of WebGL)
+    function render2DOverlay(now, cfg) {
+      const showLabels = chkLabelsEl ? chkLabelsEl.checked : false;
+      const attentionOnly = chkAttentionEl ? chkAttentionEl.checked : false;
+
+      visibleNodes.length = 0;
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (!n._proj || n._proj.culled) continue;
+        if (attentionOnly && n.pulse <= 0 && n.touchCount <= 1) continue;
+        visibleNodes.push(n);
+      }
+      visibleNodes.sort(nodeDepthComparator);
+
+      // Draw 3D Billboard Cluster Headers
+      const showHulls = chkClusterHullsEl ? chkClusterHullsEl.checked : true;
+      if (showHulls) {
+        clusterGroups.forEach((cNodes, cName) => {
+          if (cNodes.length >= 2) {
+            const cInfo = clusterCentroids[cName] || { cx: 0, cy: 0, cz: 0, rad: 150 };
+            const cProj = cInfo._proj;
+            if (!cProj || cProj.culled) return;
+            const color = clusterColors[cName] || '#38bdf8';
+            ctx.save();
+            const badgeWidth = Math.max(90, (cInfo.name || cName).length * 7.5 + 28) * cProj.depthFactor;
+            const badgeHeight = 20 * cProj.depthFactor;
+            const bx = cProj.x - badgeWidth / 2;
+            const by = cProj.y - (cInfo.rad * 0.85 * cProj.depthFactor) - badgeHeight - 6;
+
+            ctx.fillStyle = 'rgba(7, 14, 26, 0.92)';
+            ctx.strokeStyle = `${color}cc`;
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.roundRect(bx, by, badgeWidth, badgeHeight, 5 * cProj.depthFactor);
+            ctx.fill();
+            ctx.stroke();
+
+            const fontSize = Math.max(9, Math.round(10 * cProj.depthFactor));
+            ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${cInfo.name || cName} (${cNodes.length})`, cProj.x, by + badgeHeight * 0.72);
+            ctx.restore();
+          }
+        });
+      }
+
+      for (let i = 0; i < visibleNodes.length; i++) {
+        const n = visibleNodes[i];
+        const p = n._proj;
+        const nodeRadius = n.size * p.depthFactor;
+        const isHovered = (n === hoveredNode);
+        const isSelected = (n === selectedNode || n === trackingNode);
+        const hasThoughtAura = (n._thoughtAura && n._thoughtAura > 0.02);
+        const r = isHovered ? nodeRadius * 1.35 : nodeRadius;
+
+        if (isSelected) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.6;
+          ctx.strokeRect(p.x - r - 5, p.y - r - 5, (r + 5) * 2, (r + 5) * 2);
+        }
+
+        if (n.pulse > 0) {
+          const rippleRadius = r + (Math.PI * 2 - n.pulse) * 6 * p.depthFactor;
+          const alpha = (n.pulse / (Math.PI * 2)) * 0.85;
+          ctx.strokeStyle = n.color === '#f59e0b' ? `rgba(245, 158, 11, ${alpha})` : `rgba(0, 240, 255, ${alpha})`;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, rippleRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        const isLabelLODEligible = cfg.fullLabels || isHovered || isSelected || (n.pulse > 0) || hasThoughtAura || (p.z < 900);
+        const shouldShowLabel = isLabelLODEligible && (showLabels || isHovered || isSelected || (n.pulse > 0) || hasThoughtAura || (camera.dist < 460) || n._searchMatched);
+
+        if (shouldShowLabel) {
+          ctx.save();
+          const fontSize = Math.max(9, Math.round(10 * p.depthFactor));
+          const labelText = n.shortPath || n.name;
+          ctx.font = `${isHovered || n.pulse > 0 ? 'bold' : 'normal'} ${fontSize}px 'JetBrains Mono', monospace`;
+
+          const textMetrics = ctx.measureText(labelText);
+          const boxPadding = 4;
+          const boxWidth = textMetrics.width + boxPadding * 2;
+          const boxHeight = fontSize + boxPadding * 1.5;
+          const bx = p.x + nodeRadius + 6;
+          const by = p.y - boxHeight / 2;
+
+          ctx.fillStyle = 'rgba(7, 14, 26, 0.90)';
+          ctx.strokeStyle = isHovered ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(bx, by, boxWidth, boxHeight, 3);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = isHovered ? '#ffffff' : (n.pulse > 0 ? n.color : '#e2e8f0');
+          ctx.textAlign = 'left';
+          ctx.fillText(labelText, bx + boxPadding, by + fontSize * 0.85);
+          ctx.restore();
+        }
+
+        if (n._shockwaveStatus) {
+          const statusCol = n._shockwaveStatus === 'red' ? '#f43f5e' : (n._shockwaveStatus === 'amber' ? '#f59e0b' : '#10b981');
+          ctx.strokeStyle = statusCol;
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r * 2.2, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.save();
+          const sLabel = n._shockwaveStatus === 'red' ? 'CRITICAL CONSUMER' : (n._shockwaveStatus === 'amber' ? 'TEST AFFECTED' : 'SAFE CONSUMER');
+          ctx.font = 'bold 8px monospace';
+          ctx.fillStyle = statusCol;
+          ctx.fillText(sLabel, p.x - 30, p.y - r - 8);
+          ctx.restore();
+        }
+
+        if (n._collisionHazard) {
+          const hazardRad = r * (2.2 + Math.sin(now * 0.015) * 0.4);
+          ctx.strokeStyle = 'rgba(244, 63, 94, 0.95)';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, hazardRad, now * 0.005, now * 0.005 + Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.save();
+          ctx.font = 'bold 8px monospace';
+          ctx.fillStyle = '#f43f5e';
+          ctx.fillText('[COLLISION HAZARD]', p.x - 38, p.y + r + 13);
+          ctx.restore();
+        }
+
+        if (n._blindspotHazard) {
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.95)';
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r * 1.8, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.save();
+          ctx.font = 'bold 8px monospace';
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillText('[BLINDSPOT: UNREAD IMPORT]', p.x - 52, p.y - r - 8);
+          ctx.restore();
+        }
+
+        if (n._searchMatched) {
+          ctx.strokeStyle = '#00f0ff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, nodeRadius + 7, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Complete Seamless Canvas 2D Fallback Pipeline (Runs everywhere without WebGL)
+    function renderCanvas2DFallback(now, cfg) {
       // 1. Distant 3D Background Starfield (Batched by alpha buckets - 3 draw calls total!)
       for (let b = 0; b < starBuckets.length; b++) {
         const bucket = starBuckets[b];
@@ -2442,6 +3257,7 @@
           ctx.stroke();
         }
       }
+    }
 
         // Adaptive Dynamic Framerate Budgeting
         const frameDuration = performance.now() - frameStart;
@@ -3325,6 +4141,9 @@
         });
       }
       traceLog.appendChild(line);
+      while (traceLog.children.length > 200) {
+        traceLog.removeChild(traceLog.firstChild);
+      }
       if (activeTraceFilter !== 'all' && type !== activeTraceFilter) {
         line.style.display = 'none';
       }
@@ -3615,6 +4434,47 @@
           } catch (err) {}
         });
 
+        // High-performance batched telemetry queue (Incoming live events never stall rendering)
+        const telemetryQueue = [];
+        let isTelemetryFlushPending = false;
+
+        function scheduleTelemetryFlush() {
+          if (!isTelemetryFlushPending) {
+            isTelemetryFlushPending = true;
+            requestAnimationFrame(flushTelemetryQueue);
+          }
+        }
+
+        function flushTelemetryQueue() {
+          isTelemetryFlushPending = false;
+          if (telemetryQueue.length === 0) return;
+
+          const batch = telemetryQueue.splice(0, telemetryQueue.length);
+          let addedEvents = 0;
+
+          for (let b = 0; b < batch.length; b++) {
+            const item = batch[b];
+            if (item.type === 'tool') {
+              addedEvents++;
+              const data = item.data;
+              let colorTag = 'text-cyan-400';
+              let actPrefix = 'READ';
+              if (data.activityType === 'file_write') { colorTag = 'text-amber-400 font-bold'; actPrefix = 'WRITE'; }
+              else if (data.activityType === 'file_create') { colorTag = 'text-emerald-400 font-bold'; actPrefix = 'CREATE'; }
+              else if (data.activityType === 'terminal_command') { colorTag = 'text-purple-400 font-bold'; actPrefix = 'EXEC'; }
+
+              logTrace(`<span class="${colorTag}">[${actPrefix}]</span> <span class="text-slate-100">${data.summary || data.toolName}</span>`, actPrefix.toLowerCase(), data.filePath);
+              addTraceCard(data);
+              playSciFiChirp(data.activityType === 'file_write' ? 'write' : 'read');
+            }
+          }
+
+          if (addedEvents > 0) {
+            const countEl = document.getElementById('telemetryEventCount');
+            if (countEl) countEl.textContent = parseInt(countEl.textContent || '0', 10) + addedEvents;
+          }
+        }
+
         eventSource.addEventListener('tool', (e) => {
           try {
             const data = JSON.parse(e.data);
@@ -3627,41 +4487,26 @@
             }
 
             if (targetNode) {
-              // USP 5: Track reads and check blindspots
               if (data.activityType === 'file_read') {
                 recordFileRead(data.filePath || targetNode.id);
               } else if (data.activityType === 'file_write' || data.activityType === 'file_create') {
                 checkBlindspotHazard(targetNode);
-                // USP 1: Trigger blast radius ripple on write
                 triggerBlastRadius(targetNode, false);
               }
 
-              // USP 4: Multi-Agent Concurrency Collision Check
               checkCollisionHazard(targetNode, data.provider || 'antigravity');
 
-              // USP 2: Track checkpoint association with current turn
               if (data.step) {
                 recordTurnCheckpoint(data.step, targetNode.id);
               }
 
-              // USP 3: Autopilot camera follow
               if (autopilotEnabled && !autopilotUserOverride) {
                 flyCameraToPoint(targetNode.x, targetNode.y, targetNode.z, targetNode);
               }
             }
 
-            let colorTag = 'text-cyan-400';
-            let actPrefix = 'READ';
-            if (data.activityType === 'file_write') { colorTag = 'text-amber-400 font-bold'; actPrefix = 'WRITE'; }
-            else if (data.activityType === 'file_create') { colorTag = 'text-emerald-400 font-bold'; actPrefix = 'CREATE'; }
-            else if (data.activityType === 'terminal_command') { colorTag = 'text-purple-400 font-bold'; actPrefix = 'EXEC'; }
-
-            logTrace(`<span class="${colorTag}">[${actPrefix}]</span> <span class="text-slate-100">${data.summary || data.toolName}</span>`, actPrefix.toLowerCase(), data.filePath);
-            addTraceCard(data);
-            playSciFiChirp(data.activityType === 'file_write' ? 'write' : 'read');
-
-            const countEl = document.getElementById('telemetryEventCount');
-            countEl.textContent = parseInt(countEl.textContent || '0', 10) + 1;
+            telemetryQueue.push({ type: 'tool', data });
+            scheduleTelemetryFlush();
           } catch (err) {}
         });
 

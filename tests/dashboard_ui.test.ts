@@ -544,6 +544,35 @@ describe('Aetheris 3D Dashboard & UI Verification', () => {
     expect(content).toContain('BLINDSPOT SENTINEL');
     expect(content).toContain('inspectSentinelBox');
   });
+
+  it('implements Phase 2 hardware-grade optimizations: WebGL2/WebGL pipeline with seamless 2D fallback, continuous Float32Array typed arrays, and batched telemetry processing', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    // Dual canvas & WebGL shaders
+    expect(content).toContain('id="viewportCanvasGL"');
+    expect(content).toContain('VS_LINE_GLSL');
+    expect(content).toContain('FS_LINE_GLSL');
+    expect(content).toContain('VS_POINT_GLSL');
+    expect(content).toContain('FS_POINT_GLSL');
+    expect(content).toContain('initWebGL');
+    expect(content).toContain('renderWebGLHardware');
+    expect(content).toContain('renderCanvas2DFallback');
+    expect(content).toContain('render2DOverlay');
+    expect(content).toContain('telemetryEngine');
+    expect(content).toContain('WEBGL2 HARDWARE');
+
+    // Continuous Float32Array typed arrays
+    expect(content).toContain('nodePositions3D = new Float32Array');
+    expect(content).toContain('nodeVelocities3D = new Float32Array');
+    expect(content).toContain('nodeTargets3D = new Float32Array');
+    expect(content).toContain('nodeProjections2D = new Float32Array');
+    expect(content).toContain('nodeColorsRGBA = new Float32Array');
+
+    // Batched SSE Telemetry & DOM Processing
+    expect(content).toContain('telemetryQueue');
+    expect(content).toContain('scheduleTelemetryFlush');
+    expect(content).toContain('flushTelemetryQueue');
+  });
 });
+
 
 
