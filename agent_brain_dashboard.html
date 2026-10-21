@@ -501,6 +501,14 @@
           <span>SSE LINK:</span>
           <span id="telemetryMode" class="text-emerald-400 font-semibold">STREAMING</span>
         </div>
+        <div class="flex justify-between items-center text-slate-300 pt-1.5 border-t border-white/5">
+          <span class="font-bold">PERF MODE:</span>
+          <div id="perfModeSelector" class="flex items-center gap-1">
+            <button id="btnPerfHigh" data-mode="high" class="px-1.5 py-0.5 rounded text-[9px] font-bold border border-white/10 text-slate-400 hover:text-white transition">HIGH</button>
+            <button id="btnPerfBalanced" data-mode="balanced" class="px-1.5 py-0.5 rounded text-[9px] font-bold border border-cyan-500/50 bg-cyan-950/70 text-cyan-300 transition">BALANCED</button>
+            <button id="btnPerfPerformance" data-mode="turbo" class="px-1.5 py-0.5 rounded text-[9px] font-bold border border-white/10 text-slate-400 hover:text-white transition">TURBO</button>
+          </div>
+        </div>
       </div>
 
       <!-- Visibility & View Toggles -->
@@ -789,11 +797,52 @@
     let width = 800;
     let height = 600;
 
+    // Performance & Graphics Quality Settings (High / Balanced / Turbo)
+    const QualitySettings = {
+      high: {
+        name: 'HIGH',
+        maxDpr: 2.0,
+        lodDist: 2000,
+        useSprites: true,
+        enableShadows: true,
+        cageSegments: 32,
+        maxCometTail: 18,
+        fullLabels: true
+      },
+      balanced: {
+        name: 'BALANCED',
+        maxDpr: 1.5,
+        lodDist: 1400,
+        useSprites: true,
+        enableShadows: false,
+        cageSegments: 20,
+        maxCometTail: 10,
+        fullLabels: false
+      },
+      turbo: {
+        name: 'TURBO',
+        maxDpr: 1.0,
+        lodDist: 900,
+        useSprites: true,
+        enableShadows: false,
+        cageSegments: 12,
+        maxCometTail: 5,
+        fullLabels: false
+      }
+    };
+
+    let currentQuality = 'balanced';
+    try {
+      const savedQ = localStorage.getItem('agent_brain_quality');
+      if (savedQ && QualitySettings[savedQ]) currentQuality = savedQ;
+    } catch (_) {}
+
     function resize() {
       width = Math.max(300, Math.floor(window.innerWidth || (container && container.clientWidth) || 800));
       height = Math.max(300, Math.floor(window.innerHeight || (container && container.clientHeight) || 600));
 
-      const dpr = window.devicePixelRatio || 1;
+      const cfg = QualitySettings[currentQuality] || QualitySettings.balanced;
+      const dpr = Math.min(window.devicePixelRatio || 1, cfg.maxDpr);
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       canvas.style.width = width + 'px';
@@ -1150,7 +1199,107 @@
       return hex;
     }
 
-    // 3D Point Perspective Projection Function
+    // =========================================================================
+    // PRE-RENDERED SPRITE ATLAS & CACHE (HIGH-FPS OFFSCREEN CANVASES)
+    // =========================================================================
+    const haloSpriteCache = new Map();
+    const coreSpriteCache = new Map();
+    let singularitySprite = null;
+    let thoughtAuraSprite = null;
+
+    function getHaloSprite(color) {
+      let sprite = haloSpriteCache.get(color);
+      if (!sprite) {
+        sprite = document.createElement('canvas');
+        sprite.width = 128;
+        sprite.height = 128;
+        const sctx = sprite.getContext('2d');
+        const haloGrad = sctx.createRadialGradient(64, 64, 18, 64, 64, 60);
+        haloGrad.addColorStop(0, hexToRgba(color, 0.45));
+        haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        sctx.fillStyle = haloGrad;
+        sctx.beginPath();
+        sctx.arc(64, 64, 60, 0, Math.PI * 2);
+        sctx.fill();
+        haloSpriteCache.set(color, sprite);
+      }
+      return sprite;
+    }
+
+    function getCoreSprite(color) {
+      let sprite = coreSpriteCache.get(color);
+      if (!sprite) {
+        sprite = document.createElement('canvas');
+        sprite.width = 64;
+        sprite.height = 64;
+        const sctx = sprite.getContext('2d');
+        const r = 26;
+        const cx = 32, cy = 32;
+
+        // Semi-Transparent Translucent Node Core (Frosted Glass Effect: see-through nodes!)
+        const coreGrad = sctx.createRadialGradient(cx - r * 0.28, cy - r * 0.28, r * 0.05, cx, cy, r);
+        const baseAlpha = 0.70;
+        coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        coreGrad.addColorStop(0.45, hexToRgba(color, baseAlpha));
+        coreGrad.addColorStop(1, hexToRgba(color, baseAlpha * 0.55));
+        sctx.fillStyle = coreGrad;
+        sctx.beginPath();
+        sctx.arc(cx, cy, r, 0, Math.PI * 2);
+        sctx.fill();
+
+        // Luminous Outer Rim Ring
+        sctx.strokeStyle = hexToRgba(color, 0.92);
+        sctx.lineWidth = 1.6;
+        sctx.stroke();
+
+        // Specular Highlight Glint
+        sctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        sctx.beginPath();
+        sctx.arc(cx - r * 0.32, cy - r * 0.32, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
+        sctx.fill();
+
+        coreSpriteCache.set(color, sprite);
+      }
+      return sprite;
+    }
+
+    function getSingularitySprite() {
+      if (!singularitySprite) {
+        singularitySprite = document.createElement('canvas');
+        singularitySprite.width = 256;
+        singularitySprite.height = 256;
+        const sctx = singularitySprite.getContext('2d');
+        const grad = sctx.createRadialGradient(128, 128, 4, 128, 128, 120);
+        grad.addColorStop(0, 'rgba(0, 240, 255, 0.90)');
+        grad.addColorStop(0.35, 'rgba(245, 158, 11, 0.40)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        sctx.fillStyle = grad;
+        sctx.beginPath();
+        sctx.arc(128, 128, 120, 0, Math.PI * 2);
+        sctx.fill();
+      }
+      return singularitySprite;
+    }
+
+    function getThoughtAuraSprite() {
+      if (!thoughtAuraSprite) {
+        thoughtAuraSprite = document.createElement('canvas');
+        thoughtAuraSprite.width = 128;
+        thoughtAuraSprite.height = 128;
+        const sctx = thoughtAuraSprite.getContext('2d');
+        const auraGrad = sctx.createRadialGradient(64, 64, 8, 64, 64, 60);
+        auraGrad.addColorStop(0, 'rgba(0, 240, 255, 0.55)');
+        auraGrad.addColorStop(0.5, 'rgba(168, 85, 247, 0.35)');
+        auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        sctx.fillStyle = auraGrad;
+        sctx.beginPath();
+        sctx.arc(64, 64, 60, 0, Math.PI * 2);
+        sctx.fill();
+      }
+      return thoughtAuraSprite;
+    }
+
+    // 3D Point Perspective Projection Function with Viewport Culling
     function project3D(px, py, pz) {
       const cx = width / 2;
       const cy = height / 2;
@@ -1181,12 +1330,17 @@
       const screenX = cx + x1 * scale + camera.panX;
       const screenY = cy + y2 * scale + camera.panY;
 
+      // Frustum & viewport culling margin
+      const margin = 120;
+      const culled = (screenX < -margin || screenX > width + margin || screenY < -margin || screenY > height + margin);
+
       return {
         x: screenX,
         y: screenY,
         z: camZ,
         scale: scale,
-        depthFactor: Math.min(2.4, Math.max(0.25, scale * 1.15))
+        depthFactor: Math.min(2.4, Math.max(0.25, scale * 1.15)),
+        culled: culled
       };
     }
 
@@ -1403,22 +1557,72 @@
     }
 
     // =========================================================================
-    // 5. 60 FPS TRUE 3D RENDER ENGINE (DEPTH-SORTED PAINTER'S ALGORITHM)
+    // 5. HIGH-PERFORMANCE 60-144 FPS TRUE 3D RENDER ENGINE (BATCHED PIPELINE)
     // =========================================================================
     let lastFrameTime = performance.now();
     let frameCount = 0;
     let fpsTimer = performance.now();
+    let smoothedFps = 60.0;
+
+    // Pre-allocated reusable arrays to eliminate GC pressure
+    const visibleNodes = [];
+    const edgeBuckets = new Map();
+    const highEdges = [];
+
+    // Quality mode selector handlers
+    function setQualityMode(mode) {
+      if (!QualitySettings[mode]) mode = 'balanced';
+      currentQuality = mode;
+      try { localStorage.setItem('agent_brain_quality', mode); } catch (_) {}
+
+      const buttons = [
+        { id: 'btnPerfHigh', mode: 'high' },
+        { id: 'btnPerfBalanced', mode: 'balanced' },
+        { id: 'btnPerfPerformance', mode: 'turbo' }
+      ];
+      buttons.forEach(b => {
+        const el = document.getElementById(b.id);
+        if (el) {
+          if (b.mode === mode) {
+            el.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold border border-cyan-500/60 bg-cyan-950/80 text-cyan-300 transition';
+          } else {
+            el.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold border border-white/10 text-slate-400 hover:text-white transition';
+          }
+        }
+      });
+      resize();
+    }
+
+    document.getElementById('btnPerfHigh')?.addEventListener('click', () => setQualityMode('high'));
+    document.getElementById('btnPerfBalanced')?.addEventListener('click', () => setQualityMode('balanced'));
+    document.getElementById('btnPerfPerformance')?.addEventListener('click', () => setQualityMode('turbo'));
 
     function render(now) {
       const dt = (now - lastFrameTime) / 1000;
       lastFrameTime = now;
+      const cfg = QualitySettings[currentQuality] || QualitySettings.balanced;
 
-      // FPS Measurement
+      // Smoothed Real-Time FPS Measurement
       frameCount++;
-      if (now - fpsTimer >= 800) {
-        const fps = Math.round((frameCount * 1000) / (now - fpsTimer));
-        document.getElementById('fpsMeter').textContent = `${fps} FPS`;
-        document.getElementById('fpsBar').style.width = `${Math.min(100, (fps / 60) * 100)}%`;
+      const elapsedFps = now - fpsTimer;
+      if (elapsedFps >= 300) {
+        const instantFps = (frameCount * 1000) / elapsedFps;
+        smoothedFps = smoothedFps === 0 ? instantFps : (smoothedFps * 0.75 + instantFps * 0.25);
+        const fpsMeterEl = document.getElementById('fpsMeter');
+        if (fpsMeterEl) {
+          fpsMeterEl.textContent = `${smoothedFps.toFixed(1)} FPS`;
+          if (smoothedFps >= 55) {
+            fpsMeterEl.className = 'text-emerald-400 font-bold';
+          } else if (smoothedFps >= 30) {
+            fpsMeterEl.className = 'text-amber-400 font-bold';
+          } else {
+            fpsMeterEl.className = 'text-rose-400 font-bold';
+          }
+        }
+        const fpsBarEl = document.getElementById('fpsBar');
+        if (fpsBarEl) {
+          fpsBarEl.style.width = `${Math.min(100, (smoothedFps / 60) * 100)}%`;
+        }
         frameCount = 0;
         fpsTimer = now;
       }
@@ -1470,7 +1674,8 @@
       const spring = 0.0035;
       const damping = 0.94;
 
-      for (const n of nodes) {
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
         n.vx += (n.targetX - n.x) * spring;
         n.vy += (n.targetY - n.y) * spring;
         n.vz += (n.targetZ - n.z) * spring;
@@ -1489,114 +1694,275 @@
         n._proj = project3D(n.x, n.y, n.z);
       }
 
-      // Render Elements Buffer for Depth Sorting
-      const drawQueue = [];
-
-      // A. Distant 3D Background Starfield
-      backgroundStars3D.forEach(star => {
+      // 1. Distant 3D Background Starfield (Batched)
+      for (let i = 0; i < backgroundStars3D.length; i++) {
+        const star = backgroundStars3D[i];
         const p = project3D(star.x, star.y, star.z);
-        if (p) {
-          drawQueue.push({
-            type: 'star',
-            z: p.z,
-            p: p,
-            size: star.size * p.depthFactor,
-            alpha: star.alpha
-          });
+        if (p && !p.culled) {
+          ctx.fillStyle = `rgba(226, 232, 240, ${star.alpha})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, star.size * p.depthFactor, 0, Math.PI * 2);
+          ctx.fill();
         }
-      });
+      }
 
-      // B. Ground 3D Coordinate Plane / Latitude Rings
+      // 2. Ground 3D Coordinate Plane / Latitude Rings (Batched into single stroke)
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.09)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
       const ringRadii = [180, 360, 540];
-      ringRadii.forEach(r => {
-        const segs = 36;
-        const pts = [];
-        for (let i = 0; i <= segs; i++) {
-          const a = (i / segs) * Math.PI * 2;
-          pts.push({ x: Math.cos(a) * r, y: 0, z: Math.sin(a) * r });
+      const ringSegs = cfg.cageSegments || 24;
+      for (let r = 0; r < ringRadii.length; r++) {
+        const rad = ringRadii[r];
+        let started = false;
+        for (let i = 0; i <= ringSegs; i++) {
+          const a = (i / ringSegs) * Math.PI * 2;
+          const proj = project3D(Math.cos(a) * rad, 0, Math.sin(a) * rad);
+          if (proj && !proj.culled) {
+            if (!started) { ctx.moveTo(proj.x, proj.y); started = true; }
+            else ctx.lineTo(proj.x, proj.y);
+          } else {
+            started = false;
+          }
         }
-        drawQueue.push({
-          type: 'groundRing',
-          z: camera.dist,
-          pts: pts
-        });
-      });
+      }
+      ctx.stroke();
 
-      // C. 3D Gyroscope Gimbal Rings & Octahedron Core
+      // 3. 3D Gyroscope Gimbal Rings & Octahedron Core
       gyroAngleX += 0.012;
       gyroAngleY += 0.016;
       gyroAngleZ += 0.009;
       corePulse += 0.035;
 
       const reactorScale = 1.0 + Math.sin(corePulse) * 0.08;
+      const coreProj = project3D(0, 0, 0);
 
-      // Project Octahedron Crystal Core Vertices
-      const projectedOcta = octaVertices3D.map(v => {
+      if (coreProj && !coreProj.culled) {
+        const coreRadius = 45 * coreProj.depthFactor * reactorScale;
+        // Inner Glowing Singularity Core: Blit pre-rendered offscreen sprite (0 allocation!)
+        const coreSprite = getSingularitySprite();
+        ctx.drawImage(coreSprite, coreProj.x - coreRadius, coreProj.y - coreRadius, coreRadius * 2, coreRadius * 2);
+
+        // Luminous Connection Rays to Cluster Centroids (Batched into single stroke!)
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const cCentroids = Object.values(clusterCentroids);
+        for (let i = 0; i < cCentroids.length; i++) {
+          const ccp = project3D(cCentroids[i].cx, cCentroids[i].cy, cCentroids[i].cz);
+          if (ccp && !ccp.culled) {
+            ctx.moveTo(coreProj.x, coreProj.y);
+            ctx.lineTo(ccp.x, ccp.y);
+          }
+        }
+        ctx.stroke();
+
+        // Project Octahedron Crystal Core Vertices
         const cosA = Math.cos(gyroAngleY), sinA = Math.sin(gyroAngleY);
-        const rx = v.x * cosA - v.z * sinA;
-        const rz = v.x * sinA + v.z * cosA;
-        const ry = v.y;
-        return project3D(rx * reactorScale, ry * reactorScale, rz * reactorScale);
-      });
+        const projectedOcta = octaVertices3D.map(v => {
+          const rx = v.x * cosA - v.z * sinA;
+          const rz = v.x * sinA + v.z * cosA;
+          const ry = v.y;
+          return project3D(rx * reactorScale, ry * reactorScale, rz * reactorScale);
+        });
 
-      drawQueue.push({
-        type: 'coreDiamond',
-        z: camera.dist, // at scene center
-        projected: projectedOcta,
-        reactorScale
-      });
+        // Octahedron Wireframe Edges (Batched into single stroke!)
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.88)';
+        ctx.lineWidth = 1.8;
+        if (cfg.enableShadows) {
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 12;
+        }
+        ctx.beginPath();
+        octaEdges3D.forEach(([i, j]) => {
+          const p1 = projectedOcta[i];
+          const p2 = projectedOcta[j];
+          if (p1 && p2 && (!p1.culled || !p2.culled)) {
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+          }
+        });
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
 
-      // D. 3D Cluster Bounding Meshes (TRUE 3D GEOMETRIC CONSTELLATION CAGES)
+      // 4. 3D Cluster Bounding Meshes: clusterHull (TRUE 3D GEOMETRIC CONSTELLATION CAGES)
       const showHulls = document.getElementById('chkClusterHulls').checked;
       if (showHulls) {
+        // Group nodes by cluster
         const clusterGroups = new Map();
-        for (const n of nodes) {
-          if (!clusterGroups.has(n.cluster)) clusterGroups.set(n.cluster, []);
-          clusterGroups.get(n.cluster).push(n);
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          let grp = clusterGroups.get(n.cluster);
+          if (!grp) {
+            grp = [];
+            clusterGroups.set(n.cluster, grp);
+          }
+          grp.push(n);
         }
 
         clusterGroups.forEach((cNodes, cName) => {
           if (cNodes.length >= 2) {
             const cInfo = clusterCentroids[cName] || { cx: 0, cy: 0, cz: 0, rad: 150 };
             const cProj = project3D(cInfo.cx, cInfo.cy, cInfo.cz);
-            if (cProj) {
-              drawQueue.push({
-                type: 'clusterHull',
-                z: cProj.z,
-                name: cInfo.name || cName,
-                color: clusterColors[cName] || '#38bdf8',
-                proj: cProj,
-                centroid: cInfo,
-                nodes: cNodes
-              });
+            if (!cProj) return;
+
+            const color = clusterColors[cName] || '#38bdf8';
+
+            // 1. Tilted 3D Orbital Latitude Ring (Batched into single stroke!)
+            const ringPts = cfg.cageSegments || 24;
+            const ringRad = cInfo.rad * 0.95;
+            ctx.strokeStyle = `${color}45`;
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            let startedRing = false;
+            for (let i = 0; i <= ringPts; i++) {
+              const a = (i / ringPts) * Math.PI * 2;
+              const rx = cInfo.cx + Math.cos(a) * ringRad;
+              const ry = cInfo.cy + Math.sin(a) * ringRad * 0.4;
+              const rz = cInfo.cz + Math.sin(a) * ringRad * 0.9;
+              const rp = project3D(rx, ry, rz);
+              if (rp && !rp.culled) {
+                if (!startedRing) { ctx.moveTo(rp.x, rp.y); startedRing = true; }
+                else ctx.lineTo(rp.x, rp.y);
+              } else {
+                startedRing = false;
+              }
+            }
+            ctx.stroke();
+
+            // 2. 3D Geometric Polyhedral Cage Vertices around cluster (Batched into single stroke!)
+            const cageVerts = [
+              { x: cInfo.cx, y: cInfo.cy - cInfo.rad * 0.7, z: cInfo.cz },
+              { x: cInfo.cx + cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz + cInfo.rad * 0.7 },
+              { x: cInfo.cx - cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz + cInfo.rad * 0.7 },
+              { x: cInfo.cx - cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz - cInfo.rad * 0.7 },
+              { x: cInfo.cx + cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz - cInfo.rad * 0.7 },
+              { x: cInfo.cx, y: cInfo.cy + cInfo.rad * 0.7, z: cInfo.cz }
+            ].map(v => project3D(v.x, v.y, v.z));
+
+            ctx.strokeStyle = `${color}30`;
+            ctx.lineWidth = 1;
+            const cageEdges = [
+              [0,1],[0,2],[0,3],[0,4],
+              [1,2],[2,3],[3,4],[4,1],
+              [5,1],[5,2],[5,3],[5,4]
+            ];
+            ctx.beginPath();
+            cageEdges.forEach(([i, j]) => {
+              const vA = cageVerts[i];
+              const vB = cageVerts[j];
+              if (vA && vB && (!vA.culled || !vB.culled)) {
+                ctx.moveTo(vA.x, vA.y);
+                ctx.lineTo(vB.x, vB.y);
+              }
+            });
+            ctx.stroke();
+
+            // 3. Intra-cluster Constellation Web (Batched into single stroke!)
+            ctx.strokeStyle = `${color}55`;
+            ctx.lineWidth = 1.1;
+            ctx.beginPath();
+            for (let i = 0; i < cNodes.length; i++) {
+              const nA = cNodes[i]._proj;
+              if (!nA) continue;
+              for (let step = 1; step <= 2 && i + step < cNodes.length; step++) {
+                const nB = cNodes[i + step]._proj;
+                if (nA && nB && (!nA.culled || !nB.culled)) {
+                  ctx.moveTo(nA.x, nA.y);
+                  ctx.lineTo(nB.x, nB.y);
+                }
+              }
+            }
+            ctx.stroke();
+
+            // 4. Floating 3D Billboard Cluster Header
+            if (!cProj.culled) {
+              ctx.save();
+              const badgeWidth = Math.max(90, (cInfo.name || cName).length * 7.5 + 28) * cProj.depthFactor;
+              const badgeHeight = 20 * cProj.depthFactor;
+              const bx = cProj.x - badgeWidth / 2;
+              const by = cProj.y - (cInfo.rad * 0.85 * cProj.depthFactor) - badgeHeight - 6;
+
+              ctx.fillStyle = 'rgba(7, 14, 26, 0.92)';
+              ctx.strokeStyle = `${color}cc`;
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.roundRect(bx, by, badgeWidth, badgeHeight, 5 * cProj.depthFactor);
+              ctx.fill();
+              ctx.stroke();
+
+              const fontSize = Math.max(9, Math.round(10 * cProj.depthFactor));
+              ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
+              ctx.fillStyle = '#ffffff';
+              ctx.textAlign = 'center';
+              ctx.fillText(`${cInfo.name || cName} (${cNodes.length})`, cProj.x, by + badgeHeight * 0.72);
+              ctx.restore();
             }
           }
         });
       }
 
-      // E. Luminous Connections Web (Intra-cluster + Inter-cluster + Core Rays)
+      // 5. Luminous Connections Web (Batching Edges by Color & Highlight)
       const showConnections = document.getElementById('chkConnections').checked;
       if (showConnections) {
-        for (const e of edges) {
+        edgeBuckets.clear();
+        highEdges.length = 0;
+
+        for (let i = 0; i < edges.length; i++) {
+          const e = edges[i];
           const n1 = nodeMap.get(e.source);
           const n2 = nodeMap.get(e.target);
-          if (n1 && n2 && n1._proj && n2._proj) {
-            const avgZ = (n1._proj.z + n2._proj.z) / 2;
-            const isHighlighted = (n1 === hoveredNode || n2 === hoveredNode || n1 === selectedNode || n2 === selectedNode || n1 === trackingNode || n2 === trackingNode);
-            drawQueue.push({
-              type: 'edge',
-              z: avgZ,
-              n1: n1,
-              n2: n2,
-              color: n1.color || clusterColors[n1.cluster] || '#38bdf8',
-              weight: e.weight || 1,
-              highlight: isHighlighted
-            });
+          if (!n1 || !n2 || !n1._proj || !n2._proj) continue;
+          const p1 = n1._proj;
+          const p2 = n2._proj;
+          if (p1.culled && p2.culled) continue;
+
+          const isHighlighted = (n1 === hoveredNode || n2 === hoveredNode || n1 === selectedNode || n2 === selectedNode || n1 === trackingNode || n2 === trackingNode);
+          if (isHighlighted) {
+            highEdges.push(p1, p2);
+          } else {
+            const col = n1.color || clusterColors[n1.cluster] || '#38bdf8';
+            let bucket = edgeBuckets.get(col);
+            if (!bucket) {
+              bucket = [];
+              edgeBuckets.set(col, bucket);
+            }
+            bucket.push(p1, p2);
           }
+        }
+
+        // Draw standard edges in batched strokes per color
+        edgeBuckets.forEach((pts, color) => {
+          ctx.strokeStyle = `${color}88`;
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          for (let i = 0; i < pts.length; i += 2) {
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[i + 1].x, pts[i + 1].y);
+          }
+          ctx.stroke();
+        });
+
+        // Draw highlighted glowing edges in a single glowing stroke
+        if (highEdges.length > 0) {
+          ctx.strokeStyle = '#00f0ff';
+          ctx.lineWidth = 2.4;
+          if (cfg.enableShadows) {
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 14;
+          }
+          ctx.beginPath();
+          for (let i = 0; i < highEdges.length; i += 2) {
+            ctx.moveTo(highEdges[i].x, highEdges[i].y);
+            ctx.lineTo(highEdges[i + 1].x, highEdges[i + 1].y);
+          }
+          ctx.stroke();
+          ctx.shadowBlur = 0;
         }
       }
 
-      // F. Signal Energy Packets traveling on connections
+      // 6. Signal Energy Packets
       for (let i = energyPackets.length - 1; i >= 0; i--) {
         const pkt = energyPackets[i];
         pkt.progress += pkt.speed;
@@ -1609,18 +1975,21 @@
           const py = pkt.source.y + (pkt.target.y - pkt.source.y) * pkt.progress;
           const pz = pkt.source.z + (pkt.target.z - pkt.source.z) * pkt.progress;
           const proj = project3D(px, py, pz);
-          if (proj) {
-            drawQueue.push({
-              type: 'energyPacket',
-              z: proj.z,
-              proj: proj,
-              color: pkt.color
-            });
+          if (proj && !proj.culled) {
+            ctx.fillStyle = '#ffffff';
+            if (cfg.enableShadows) {
+              ctx.shadowColor = pkt.color;
+              ctx.shadowBlur = 12;
+            }
+            ctx.beginPath();
+            ctx.arc(proj.x, proj.y, 3.5 * proj.depthFactor, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
           }
         }
       }
 
-      // G. 3D Orbital Comets
+      // 7. 3D Orbital Comets
       comets3D.forEach(c => {
         c.angle += c.speed;
         const u = Math.cos(c.angle) * c.radA;
@@ -1632,396 +2001,175 @@
         const proj = project3D(cx, cy, cz);
         if (proj) {
           c.trail.push({ x: proj.x, y: proj.y, z: proj.z, time: now });
-          if (c.trail.length > 18) c.trail.shift();
+          if (c.trail.length > (cfg.maxCometTail || 12)) c.trail.shift();
 
-          drawQueue.push({
-            type: 'comet',
-            z: proj.z,
-            proj: proj,
-            color: c.color,
-            trail: [...c.trail]
-          });
+          if (!proj.culled) {
+            ctx.fillStyle = '#ffffff';
+            if (cfg.enableShadows) {
+              ctx.shadowColor = c.color;
+              ctx.shadowBlur = 18;
+            }
+            ctx.beginPath();
+            ctx.arc(proj.x, proj.y, 4.5 * proj.depthFactor, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (c.trail.length > 2) {
+              ctx.strokeStyle = c.color;
+              ctx.lineWidth = 2.2 * proj.depthFactor;
+              ctx.beginPath();
+              ctx.moveTo(c.trail[0].x, c.trail[0].y);
+              for (let t = 1; t < c.trail.length; t++) {
+                ctx.lineTo(c.trail[t].x, c.trail[t].y);
+              }
+              ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+          }
         }
       });
 
-      // H. 3D Nodes
+      // 8. 3D Nodes Depth Sorting & Fast Sprite Blits
       const attentionOnly = document.getElementById('chkAttention').checked;
-      for (const n of nodes) {
-        if (!n._proj) continue;
-        if (attentionOnly && n.pulse <= 0 && n.touchCount <= 1) continue;
-
-        drawQueue.push({
-          type: 'node',
-          z: n._proj.z,
-          node: n
-        });
-      }
-
-      // -----------------------------------------------------------------------
-      // Depth Sort: Draw farthest (large Z) first, nearest (small Z) last!
-      // -----------------------------------------------------------------------
-      drawQueue.sort((a, b) => b.z - a.z);
-
-      // Execute Canvas 2D Draw Commands
       const showLabels = document.getElementById('chkLabels').checked;
 
-      for (const item of drawQueue) {
-        if (item.type === 'star') {
-          ctx.fillStyle = `rgba(226, 232, 240, ${item.alpha})`;
-          ctx.beginPath();
-          ctx.arc(item.p.x, item.p.y, item.size, 0, Math.PI * 2);
-          ctx.fill();
+      // Filter visible nodes into pre-allocated reusable array (Zero Object Allocations!)
+      visibleNodes.length = 0;
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (!n._proj || n._proj.culled) continue;
+        if (attentionOnly && n.pulse <= 0 && n.touchCount <= 1) continue;
+        visibleNodes.push(n);
+      }
 
-        } else if (item.type === 'groundRing') {
-          ctx.strokeStyle = 'rgba(6, 182, 212, 0.09)';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          let started = false;
-          for (const p of item.pts) {
-            const proj = project3D(p.x, p.y, p.z);
-            if (proj) {
-              if (!started) { ctx.moveTo(proj.x, proj.y); started = true; }
-              else ctx.lineTo(proj.x, proj.y);
-            }
-          }
-          ctx.stroke();
+      // Depth Sort: Draw farthest (large Z) first, nearest (small Z) last!
+      visibleNodes.sort((a, b) => b._proj.z - a._proj.z);
 
-        } else if (item.type === 'coreDiamond') {
-          // Inner Glowing Singularity Core
-          const coreProj = project3D(0, 0, 0);
-          if (coreProj) {
-            const coreRadius = 45 * coreProj.depthFactor * item.reactorScale;
-            const coreGrad = ctx.createRadialGradient(coreProj.x, coreProj.y, 2, coreProj.x, coreProj.y, coreRadius);
-            coreGrad.addColorStop(0, 'rgba(0, 240, 255, 0.90)');
-            coreGrad.addColorStop(0.35, 'rgba(245, 158, 11, 0.40)');
-            coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = coreGrad;
-            ctx.beginPath();
-            ctx.arc(coreProj.x, coreProj.y, coreRadius, 0, Math.PI * 2);
-            ctx.fill();
+      for (let i = 0; i < visibleNodes.length; i++) {
+        const n = visibleNodes[i];
+        const p = n._proj;
+        const nodeRadius = n.size * p.depthFactor;
+        const isHovered = (n === hoveredNode);
+        const isSelected = (n === selectedNode || n === trackingNode);
+        const hasThoughtAura = (n._thoughtAura && n._thoughtAura > 0.02);
+        const r = isHovered ? nodeRadius * 1.35 : nodeRadius;
 
-            // Luminous Connection Rays to Cluster Centroids
-            Object.values(clusterCentroids).forEach(cc => {
-              const ccp = project3D(cc.cx, cc.cy, cc.cz);
-              if (ccp) {
-                ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(coreProj.x, coreProj.y);
-                ctx.lineTo(ccp.x, ccp.y);
-                ctx.stroke();
-              }
-            });
-          }
-
-          // Octahedron Wireframe Edges
-          ctx.strokeStyle = 'rgba(0, 240, 255, 0.88)';
+        // Pulsing Activity Ripple Ring
+        if (n.pulse > 0) {
+          const rippleRadius = r + (Math.PI * 2 - n.pulse) * 6 * p.depthFactor;
+          const alpha = (n.pulse / (Math.PI * 2)) * 0.85;
+          ctx.strokeStyle = n.color === '#f59e0b' ? `rgba(245, 158, 11, ${alpha})` : `rgba(0, 240, 255, ${alpha})`;
           ctx.lineWidth = 1.8;
-          ctx.shadowColor = '#00f0ff';
-          ctx.shadowBlur = 12;
-
-          octaEdges3D.forEach(([i, j]) => {
-            const p1 = item.projected[i];
-            const p2 = item.projected[j];
-            if (p1 && p2) {
-              ctx.beginPath();
-              ctx.moveTo(p1.x, p1.y);
-              ctx.lineTo(p2.x, p2.y);
-              ctx.stroke();
-            }
-          });
-          ctx.shadowBlur = 0;
-
-        } else if (item.type === 'clusterHull') {
-          // TRUE 3D CONSTELLATION MESH & GEOMETRIC CAGE
-          const color = item.color;
-          const cInfo = item.centroid;
-          const cProj = item.proj;
-
-          // 1. Tilted 3D Orbital Latitude Ring (32 Points in 3D Space)
-          const ringPts = 32;
-          const ringRad = cInfo.rad * 0.95;
-          ctx.strokeStyle = `${color}45`;
-          ctx.lineWidth = 1.4;
           ctx.beginPath();
-          let startedRing = false;
-          for (let i = 0; i <= ringPts; i++) {
-            const a = (i / ringPts) * Math.PI * 2;
-            const rx = cInfo.cx + Math.cos(a) * ringRad;
-            const ry = cInfo.cy + Math.sin(a) * ringRad * 0.4;
-            const rz = cInfo.cz + Math.sin(a) * ringRad * 0.9;
-            const rp = project3D(rx, ry, rz);
-            if (rp) {
-              if (!startedRing) { ctx.moveTo(rp.x, rp.y); startedRing = true; }
-              else ctx.lineTo(rp.x, rp.y);
-            }
-          }
+          ctx.arc(p.x, p.y, rippleRadius, 0, Math.PI * 2);
           ctx.stroke();
+        }
 
-          // 2. 3D Geometric Polyhedral Cage Vertices around cluster
-          const cageVerts = [
-            { x: cInfo.cx, y: cInfo.cy - cInfo.rad * 0.7, z: cInfo.cz },
-            { x: cInfo.cx + cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz + cInfo.rad * 0.7 },
-            { x: cInfo.cx - cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz + cInfo.rad * 0.7 },
-            { x: cInfo.cx - cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz - cInfo.rad * 0.7 },
-            { x: cInfo.cx + cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz - cInfo.rad * 0.7 },
-            { x: cInfo.cx, y: cInfo.cy + cInfo.rad * 0.7, z: cInfo.cz }
-          ].map(v => project3D(v.x, v.y, v.z));
+        // Ambient Energy Aura when Antigravity is actively reasoning about this node
+        if (hasThoughtAura) {
+          const auraRad = r * (2.8 + Math.sin(now * 0.007) * 0.45);
+          const auraSprite = getThoughtAuraSprite();
+          ctx.globalAlpha = Math.min(1.0, n._thoughtAura);
+          ctx.drawImage(auraSprite, p.x - auraRad, p.y - auraRad, auraRad * 2, auraRad * 2);
+          ctx.globalAlpha = 1.0;
 
-          ctx.strokeStyle = `${color}30`;
-          ctx.lineWidth = 1;
-          const cageEdges = [
-            [0,1],[0,2],[0,3],[0,4],
-            [1,2],[2,3],[3,4],[4,1],
-            [5,1],[5,2],[5,3],[5,4]
-          ];
-          cageEdges.forEach(([i, j]) => {
-            const vA = cageVerts[i];
-            const vB = cageVerts[j];
-            if (vA && vB) {
-              ctx.beginPath();
-              ctx.moveTo(vA.x, vA.y);
-              ctx.lineTo(vB.x, vB.y);
-              ctx.stroke();
-            }
-          });
-
-          // 3. Intra-cluster Constellation Web: Connect nodes within cluster with glowing lines
-          if (item.nodes.length >= 2) {
-            ctx.strokeStyle = `${color}55`;
-            ctx.lineWidth = 1.1;
-            for (let i = 0; i < item.nodes.length; i++) {
-              const nA = item.nodes[i]._proj;
-              // Connect to 2 neighbors to form rich constellation web
-              for (let step = 1; step <= 2 && i + step < item.nodes.length; step++) {
-                const nB = item.nodes[i + step]._proj;
-                if (nA && nB) {
-                  ctx.beginPath();
-                  ctx.moveTo(nA.x, nA.y);
-                  ctx.lineTo(nB.x, nB.y);
-                  ctx.stroke();
-                }
-              }
-            }
-          }
-
-          // 4. Floating 3D Billboard Cluster Header
-          ctx.save();
-          const badgeWidth = Math.max(90, item.name.length * 7.5 + 28) * cProj.depthFactor;
-          const badgeHeight = 20 * cProj.depthFactor;
-          const bx = cProj.x - badgeWidth / 2;
-          const by = cProj.y - (cInfo.rad * 0.85 * cProj.depthFactor) - badgeHeight - 6;
-
-          // High Contrast Badge Background
-          ctx.fillStyle = 'rgba(7, 14, 26, 0.92)';
-          ctx.strokeStyle = `${color}cc`;
-          ctx.lineWidth = 1.4;
+          // Energetic thought orbit ring with dash pattern
+          ctx.strokeStyle = `rgba(0, 240, 255, ${n._thoughtAura * 0.88})`;
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([4, 4]);
           ctx.beginPath();
-          ctx.roundRect(bx, by, badgeWidth, badgeHeight, 5 * cProj.depthFactor);
-          ctx.fill();
+          ctx.arc(p.x, p.y, r * 1.9, now * 0.004, now * 0.004 + Math.PI * 2);
           ctx.stroke();
+          ctx.setLineDash([]);
 
-          // Badge Text
-          const fontSize = Math.max(9, Math.round(10 * cProj.depthFactor));
-          ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
+          // Orbiting energy spark
+          const sparkAngle = now * 0.008;
+          const sx = p.x + Math.cos(sparkAngle) * r * 1.9;
+          const sy = p.y + Math.sin(sparkAngle) * r * 1.9;
           ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.fillText(`${item.name} (${item.nodes.length})`, cProj.x, by + badgeHeight * 0.72);
-          ctx.restore();
-
-        } else if (item.type === 'edge') {
-          // EXPANSIVE LUMINOUS CONNECTIONS WEB (LIKE IN REFERENCE)
-          const p1 = item.n1._proj;
-          const p2 = item.n2._proj;
-          const isHigh = item.highlight;
-          const color = item.color;
-
-          if (isHigh) {
-            ctx.strokeStyle = '#00f0ff';
-            ctx.lineWidth = 2.4;
-            ctx.shadowColor = '#00f0ff';
-            ctx.shadowBlur = 14;
-          } else {
-            ctx.strokeStyle = color ? `${color}88` : 'rgba(56, 189, 248, 0.65)';
-            ctx.lineWidth = Math.max(0.8, 1.2 * item.n1._proj.depthFactor);
-          }
-
-          ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-
-        } else if (item.type === 'energyPacket') {
-          const p = item.proj;
-          ctx.fillStyle = '#ffffff';
-          ctx.shadowColor = item.color;
-          ctx.shadowBlur = 12;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 3.5 * p.depthFactor, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-
-        } else if (item.type === 'comet') {
-          const p = item.proj;
-          ctx.fillStyle = '#ffffff';
-          ctx.shadowColor = item.color;
-          ctx.shadowBlur = 18;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 4.5 * p.depthFactor, 0, Math.PI * 2);
-          ctx.fill();
-
-          if (item.trail.length > 2) {
-            ctx.strokeStyle = item.color;
-            ctx.lineWidth = 2.2 * p.depthFactor;
-            ctx.beginPath();
-            ctx.moveTo(item.trail[0].x, item.trail[0].y);
-            for (let t = 1; t < item.trail.length; t++) {
-              ctx.lineTo(item.trail[t].x, item.trail[t].y);
-            }
-            ctx.stroke();
-          }
-          ctx.shadowBlur = 0;
-
-        } else if (item.type === 'node') {
-          const n = item.node;
-          const p = n._proj;
-          const nodeRadius = n.size * p.depthFactor;
-          const isHovered = (n === hoveredNode);
-          const isSelected = (n === selectedNode || n === trackingNode);
-          const hasThoughtAura = (n._thoughtAura && n._thoughtAura > 0.02);
-          const r = isHovered ? nodeRadius * 1.35 : nodeRadius;
-
-          // Pulsing Activity Ripple Ring
-          if (n.pulse > 0) {
-            const rippleRadius = r + (Math.PI * 2 - n.pulse) * 6 * p.depthFactor;
-            const alpha = (n.pulse / (Math.PI * 2)) * 0.85;
-            ctx.strokeStyle = n.color === '#f59e0b' ? `rgba(245, 158, 11, ${alpha})` : `rgba(0, 240, 255, ${alpha})`;
-            ctx.lineWidth = 1.8;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, rippleRadius, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-
-          // Ambient Energy Aura when Antigravity is actively reasoning about this node
-          if (hasThoughtAura) {
-            const auraRad = r * (2.8 + Math.sin(now * 0.007) * 0.45);
-            const auraGrad = ctx.createRadialGradient(p.x, p.y, r * 0.25, p.x, p.y, auraRad);
-            auraGrad.addColorStop(0, `rgba(0, 240, 255, ${n._thoughtAura * 0.55})`);
-            auraGrad.addColorStop(0.5, `rgba(168, 85, 247, ${n._thoughtAura * 0.35})`);
-            auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = auraGrad;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, auraRad, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Energetic thought orbit ring with dash pattern
-            ctx.strokeStyle = `rgba(0, 240, 255, ${n._thoughtAura * 0.88})`;
-            ctx.lineWidth = 1.6;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, r * 1.9, now * 0.004, now * 0.004 + Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Orbiting energy spark
-            const sparkAngle = now * 0.008;
-            const sx = p.x + Math.cos(sparkAngle) * r * 1.9;
-            const sy = p.y + Math.sin(sparkAngle) * r * 1.9;
-            ctx.fillStyle = '#ffffff';
+          if (cfg.enableShadows) {
             ctx.shadowColor = '#00f0ff';
             ctx.shadowBlur = 10;
-            ctx.beginPath();
-            ctx.arc(sx, sy, 2.8 * p.depthFactor, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-
-            n._thoughtAura *= 0.993; // Smooth decay
           }
-
-          // 1. Soft Outer Holographic Halo
-          const haloGrad = ctx.createRadialGradient(p.x, p.y, r * 0.3, p.x, p.y, r * 2.3);
-          haloGrad.addColorStop(0, hexToRgba(n.color, (isHovered || n.pulse > 0 || hasThoughtAura) ? 0.45 : 0.18));
-          haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = haloGrad;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, r * 2.3, 0, Math.PI * 2);
+          ctx.arc(sx, sy, 2.8 * p.depthFactor, 0, Math.PI * 2);
           ctx.fill();
-
-          // 2. Semi-Transparent Translucent Node Core (Frosted Glass Effect: see-through nodes!)
-          const coreGrad = ctx.createRadialGradient(p.x - r * 0.28, p.y - r * 0.28, r * 0.05, p.x, p.y, r);
-          const baseAlpha = isHovered ? 0.65 : (isSelected ? 0.70 : (hasThoughtAura ? 0.60 : (n.pulse > 0 ? 0.55 : 0.32)));
-          coreGrad.addColorStop(0, `rgba(255, 255, 255, ${baseAlpha * 1.25})`);
-          coreGrad.addColorStop(0.45, hexToRgba(n.color, baseAlpha));
-          coreGrad.addColorStop(1, hexToRgba(n.color, baseAlpha * 0.55));
-
-          ctx.fillStyle = coreGrad;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-          ctx.fill();
-
-          // 3. Luminous Outer Rim Ring
-          ctx.strokeStyle = isHovered ? '#ffffff' : hexToRgba(n.color, (isHovered || n.pulse > 0 || hasThoughtAura) ? 0.95 : 0.82);
-          ctx.lineWidth = isHovered ? 1.8 : Math.max(0.9, 1.2 * p.depthFactor);
-          ctx.shadowColor = hasThoughtAura ? '#00f0ff' : (n.color || '#38bdf8');
-          ctx.shadowBlur = (isHovered || n.pulse > 0 || isSelected || hasThoughtAura) ? 14 : 5;
-          ctx.stroke();
           ctx.shadowBlur = 0;
 
-          // 4. Subtle Specular Highlight Glint
-          ctx.fillStyle = `rgba(255, 255, 255, ${isHovered ? 0.85 : 0.60})`;
+          n._thoughtAura *= 0.993; // Smooth decay
+        }
+
+        // 1. Soft Outer Holographic Halo (Ultra-fast cached sprite drawImage)
+        if (cfg.useSprites && (isHovered || n.pulse > 0 || hasThoughtAura || r > 4)) {
+          const haloSprite = getHaloSprite(n.color);
+          const haloAlpha = (isHovered || n.pulse > 0 || hasThoughtAura) ? 1.0 : 0.65;
+          ctx.globalAlpha = haloAlpha;
+          ctx.drawImage(haloSprite, p.x - r * 2.3, p.y - r * 2.3, r * 4.6, r * 4.6);
+          ctx.globalAlpha = 1.0;
+        }
+
+        // 2. Semi-Transparent Translucent Node Core (Frosted Glass Effect via Pre-rendered Sprite!)
+        const coreSprite = getCoreSprite(n.color);
+        const baseAlpha = isHovered ? 0.95 : (isSelected ? 1.0 : (hasThoughtAura ? 0.90 : (n.pulse > 0 ? 0.85 : 0.65)));
+        ctx.globalAlpha = baseAlpha;
+        ctx.drawImage(coreSprite, p.x - r, p.y - r, r * 2, r * 2);
+        ctx.globalAlpha = 1.0;
+
+        // Selection Reticle Box
+        if (isSelected) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.6;
+          ctx.strokeRect(p.x - r - 5, p.y - r - 5, (r + 5) * 2, (r + 5) * 2);
+        }
+
+        // Hover or selected highlight rim ring if shadows enabled
+        if ((isHovered || isSelected) && cfg.enableShadows) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.0;
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 14;
           ctx.beginPath();
-          ctx.arc(p.x - r * 0.32, p.y - r * 0.32, Math.max(1, r * 0.22), 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+
+        // SMART LABELING: Avoid clumped text in center!
+        const shouldShowLabel = showLabels || isHovered || isSelected || (n.pulse > 0) || hasThoughtAura || (camera.dist < 460) || n._searchMatched;
+
+        if (shouldShowLabel) {
+          ctx.save();
+          const fontSize = Math.max(9, Math.round(10 * p.depthFactor));
+          const labelText = n.shortPath || n.name;
+          ctx.font = `${isHovered || n.pulse > 0 ? 'bold' : 'normal'} ${fontSize}px 'JetBrains Mono', monospace`;
+
+          const textMetrics = ctx.measureText(labelText);
+          const boxPadding = 4;
+          const boxWidth = textMetrics.width + boxPadding * 2;
+          const boxHeight = fontSize + boxPadding * 1.5;
+          const bx = p.x + nodeRadius + 6;
+          const by = p.y - boxHeight / 2;
+
+          ctx.fillStyle = 'rgba(7, 14, 26, 0.90)';
+          ctx.strokeStyle = isHovered ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(bx, by, boxWidth, boxHeight, 3);
           ctx.fill();
+          ctx.stroke();
 
-          // Selection Reticle Box
-          if (isSelected) {
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1.6;
-            ctx.strokeRect(p.x - r - 5, p.y - r - 5, (r + 5) * 2, (r + 5) * 2);
-          }
+          ctx.fillStyle = isHovered ? '#ffffff' : (n.pulse > 0 ? n.color : '#e2e8f0');
+          ctx.textAlign = 'left';
+          ctx.fillText(labelText, bx + boxPadding, by + fontSize * 0.85);
+          ctx.restore();
+        }
 
-          // SMART LABELING: Avoid clumped text in center!
-          // Only show node labels on hover, click, active pulse, search match, close zoom, or toggle
-          const shouldShowLabel = showLabels || isHovered || isSelected || (n.pulse > 0) || hasThoughtAura || (camera.dist < 460) || n._searchMatched;
-
-          if (shouldShowLabel) {
-            ctx.save();
-            const fontSize = Math.max(9, Math.round(10 * p.depthFactor));
-            const labelText = n.shortPath || n.name;
-            ctx.font = `${isHovered || n.pulse > 0 ? 'bold' : 'normal'} ${fontSize}px 'JetBrains Mono', monospace`;
-            
-            const textMetrics = ctx.measureText(labelText);
-            const boxPadding = 4;
-            const boxWidth = textMetrics.width + boxPadding * 2;
-            const boxHeight = fontSize + boxPadding * 1.5;
-            const bx = p.x + nodeRadius + 6;
-            const by = p.y - boxHeight / 2;
-
-            // Crisp dark pill background behind text so lines never make it unreadable
-            ctx.fillStyle = 'rgba(7, 14, 26, 0.90)';
-            ctx.strokeStyle = isHovered ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.roundRect(bx, by, boxWidth, boxHeight, 3);
-            ctx.fill();
-            ctx.stroke();
-
-            // Text
-            ctx.fillStyle = isHovered ? '#ffffff' : (n.pulse > 0 ? n.color : '#e2e8f0');
-            ctx.textAlign = 'left';
-            ctx.fillText(labelText, bx + boxPadding, by + fontSize * 0.85);
-            ctx.restore();
-          }
-
-          // Search Spotlight Beacon Ring
-          if (n._searchMatched) {
-            ctx.strokeStyle = '#00f0ff';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, nodeRadius + 7, 0, Math.PI * 2);
-            ctx.stroke();
-          }
+        // Search Spotlight Beacon Ring
+        if (n._searchMatched) {
+          ctx.strokeStyle = '#00f0ff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, nodeRadius + 7, 0, Math.PI * 2);
+          ctx.stroke();
         }
       }
 

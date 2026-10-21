@@ -52,6 +52,9 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [fpsDisplay, setFpsDisplay] = useState('60 FPS');
+  const frameCountRef = useRef(0);
+  const fpsTimerRef = useRef(performance.now());
 
   // Transform state: pan & zoom
   const transformRef = useRef({ x: 0, y: 0, scale: 1.0 });
@@ -193,13 +196,16 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
     if (!ctx) return;
 
     let animId: number;
+    let cachedScanGrad: CanvasGradient | null = null;
 
     const handleResize = () => {
       const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
+      cachedScanGrad = null;
     };
 
     handleResize();
@@ -217,6 +223,16 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
       const height = canvas.clientHeight;
       const { x: panX, y: panY, scale } = transformRef.current;
 
+      // Smoothed Real-Time FPS Measurement
+      frameCountRef.current++;
+      const now = performance.now();
+      if (now - fpsTimerRef.current >= 400) {
+        const fps = Math.round((frameCountRef.current * 1000) / (now - fpsTimerRef.current));
+        setFpsDisplay(`${fps} FPS`);
+        frameCountRef.current = 0;
+        fpsTimerRef.current = now;
+      }
+
       ctx.clearRect(0, 0, width, height);
 
       // Save context for transform
@@ -224,8 +240,15 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
       ctx.translate(panX, panY);
       ctx.scale(scale, scale);
 
-      // 1. Draw ambient space background stars
+      // Frustum & viewport culling bounding box in graph coordinate space
+      const minX = -panX / scale - 60;
+      const maxX = (width - panX) / scale + 60;
+      const minY = -panY / scale - 60;
+      const maxY = (height - panY) / scale + 60;
+
+      // 1. Draw ambient space background stars (with viewport culling)
       for (const star of starsRef.current) {
+        if (star.x < minX || star.x > maxX || star.y < minY || star.y > maxY) continue;
         ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
@@ -237,14 +260,16 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
       const cAngle = crystalAngleRef.current;
       const crystalSize = 55;
 
-      // Draw horizontal horizon scanline
-      const scanGrad = ctx.createLinearGradient(-350, 0, 350, 0);
-      scanGrad.addColorStop(0, 'rgba(6, 182, 212, 0)');
-      scanGrad.addColorStop(0.3, 'rgba(6, 182, 212, 0.2)');
-      scanGrad.addColorStop(0.5, 'rgba(20, 184, 166, 0.8)');
-      scanGrad.addColorStop(0.7, 'rgba(6, 182, 212, 0.2)');
-      scanGrad.addColorStop(1, 'rgba(6, 182, 212, 0)');
-      ctx.strokeStyle = scanGrad;
+      // Draw horizontal horizon scanline (cached gradient)
+      if (!cachedScanGrad) {
+        cachedScanGrad = ctx.createLinearGradient(-350, 0, 350, 0);
+        cachedScanGrad.addColorStop(0, 'rgba(6, 182, 212, 0)');
+        cachedScanGrad.addColorStop(0.3, 'rgba(6, 182, 212, 0.2)');
+        cachedScanGrad.addColorStop(0.5, 'rgba(20, 184, 166, 0.8)');
+        cachedScanGrad.addColorStop(0.7, 'rgba(6, 182, 212, 0.2)');
+        cachedScanGrad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+      }
+      ctx.strokeStyle = cachedScanGrad;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(-350, 0);
@@ -282,46 +307,56 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
       ];
 
       ctx.save();
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = 14;
       ctx.shadowColor = 'rgba(6, 182, 212, 0.9)';
       ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
       ctx.lineWidth = 1.5;
 
+      // Batched crystal edges stroke
+      ctx.beginPath();
       for (const [i1, i2] of crystalEdges) {
-        ctx.beginPath();
         ctx.moveTo(projected[i1].x, projected[i1].y);
         ctx.lineTo(projected[i2].x, projected[i2].y);
-        ctx.stroke();
       }
+      ctx.stroke();
 
-      // Draw crystal vertex points
+      // Draw crystal vertex points (batched)
       ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
       for (const p of projected) {
-        ctx.beginPath();
+        ctx.moveTo(p.x + 2, p.y);
         ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-        ctx.fill();
       }
+      ctx.fill();
       ctx.restore();
 
-      // 3. Draw Dependency Edges
+      // 3. Draw Dependency Edges (Batched in single stroke with edge viewport culling)
       const points = pointsRef.current;
       ctx.lineWidth = 1;
-      for (const edge of edges) {
+      ctx.strokeStyle = 'rgba(30, 41, 59, 0.55)';
+      ctx.beginPath();
+      for (let i = 0; i < edges.length; i++) {
+        const edge = edges[i];
         const p1 = points.get(edge.source);
         const p2 = points.get(edge.target);
         if (p1 && p2) {
-          ctx.strokeStyle = 'rgba(30, 41, 59, 0.55)';
-          ctx.beginPath();
+          if ((p1.x < minX && p2.x < minX) || (p1.x > maxX && p2.x > maxX) ||
+              (p1.y < minY && p2.y < minY) || (p1.y > maxY && p2.y > maxY)) {
+            continue;
+          }
           ctx.moveTo(p1.x, p1.y);
           ctx.lineTo(p2.x, p2.y);
-          ctx.stroke();
         }
       }
+      ctx.stroke();
 
-      // 4. Draw Constellation Nodes
+      // 4. Draw Constellation Nodes (with Frustum & Viewport Culling)
       const queryLower = searchQuery.toLowerCase().trim();
 
       points.forEach((p) => {
+        // Frustum & viewport culling
+        if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) return;
+
         const isMatch = queryLower ? p.id.toLowerCase().includes(queryLower) : false;
         const isHovered = hoveredNodeRef.current?.id === p.id;
 
@@ -582,6 +617,26 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
 
   return (
     <div className="graph-viewport">
+      {/* Real-time FPS Counter Badge */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          pointerEvents: 'none',
+          fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+          fontSize: 10,
+          fontWeight: 700,
+          color: '#38bdf8',
+          backgroundColor: 'rgba(11, 16, 26, 0.85)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          padding: '2px 8px',
+          borderRadius: 4,
+          zIndex: 30
+        }}
+      >
+        {fpsDisplay}
+      </div>
       <canvas
         ref={canvasRef}
         className="canvas-element"

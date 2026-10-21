@@ -24,15 +24,16 @@ export class DependencyAnalyzer {
   }
 
   public isExcluded(filePath: string): boolean {
-    const norm = filePath.replace(/\\/g, '/').toLowerCase();
+    const cleanNorm = filePath.replace(/\\/g, '/').toLowerCase().replace(/^\/+/, '').replace(/\/+$/, '');
+    const norm = '/' + cleanNorm + '/';
     const defaultExcludes = ['/node_modules/', '/.git/', '/dist/', '/out/', '/build/', '/.vscode/'];
     for (const d of defaultExcludes) {
-      if (norm.includes(d) || norm.endsWith(d.slice(0, -1))) {
+      if (norm.includes(d)) {
         return true;
       }
     }
     for (const pat of this.excludedPatterns) {
-      const clean = pat.replace(/\*\*/g, '').replace(/\*/g, '').toLowerCase();
+      const clean = pat.replace(/\*\*/g, '').replace(/\*/g, '').toLowerCase().replace(/^\/+/, '').replace(/\/+$/, '');
       if (clean && norm.includes(clean)) {
         return true;
       }

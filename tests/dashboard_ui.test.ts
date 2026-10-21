@@ -314,5 +314,41 @@ describe('Agent Brain 3D Dashboard & UI Verification', () => {
     expect(content).toContain('npm run setup');
     expect(content).toContain('npm start');
   });
+
+  it('implements high-impact 60-144 FPS rendering optimizations in dashboard and constellation graph', () => {
+    const dashboardContent = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    // Pre-rendered offscreen sprite atlas cache
+    expect(dashboardContent).toContain('getHaloSprite');
+    expect(dashboardContent).toContain('getCoreSprite');
+    expect(dashboardContent).toContain('getSingularitySprite');
+    expect(dashboardContent).toContain('getThoughtAuraSprite');
+    expect(dashboardContent).toContain('haloSpriteCache');
+    expect(dashboardContent).toContain('coreSpriteCache');
+
+    // Quality modes and clamped DPR
+    expect(dashboardContent).toContain('QualitySettings');
+    expect(dashboardContent).toContain('btnPerfHigh');
+    expect(dashboardContent).toContain('btnPerfBalanced');
+    expect(dashboardContent).toContain('btnPerfPerformance');
+    expect(dashboardContent).toContain('turbo');
+    expect(dashboardContent).toContain('Math.min(window.devicePixelRatio');
+
+    // Batched edge draws and frustum culling
+    expect(dashboardContent).toContain('edgeBuckets');
+    expect(dashboardContent).toContain('highEdges');
+    expect(dashboardContent).toContain('culled');
+    expect(dashboardContent).toContain('smoothedFps');
+
+    // VS Code ConstellationGraph optimizations
+    const graphComponentPath = path.resolve(__dirname, '../src/webview/components/ConstellationGraph.tsx');
+    expect(fs.existsSync(graphComponentPath)).toBe(true);
+    const graphContent = fs.readFileSync(graphComponentPath, 'utf-8');
+    expect(graphContent).toContain('Math.min(window.devicePixelRatio || 1, 2)');
+    expect(graphContent).toContain('cachedScanGrad');
+    expect(graphContent).toContain('fpsDisplay');
+    expect(graphContent).toContain('minX');
+    expect(graphContent).toContain('maxX');
+  });
 });
+
 
