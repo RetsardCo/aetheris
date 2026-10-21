@@ -120,14 +120,26 @@ describe('Agent Brain 3D Dashboard & UI Verification', () => {
     const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
     expect(content).toContain('projectTabsContainer');
     expect(content).toContain('thoughtBadgeBar');
-    // Ensure projectTabBar is constrained with flex-shrink: 0 and horizontal scrolling
+    // Ensure projectTabBar is constrained with horizontal scrolling
     expect(content).toMatch(/#projectTabBar[\s\S]*?overflow-x:\s*auto/);
-    expect(content).toMatch(/#projectTabBar[\s\S]*?flex-shrink:\s*0/);
-    // Ensure thoughtBadgeBar flexes dynamically with min-width: 0 to prevent overlapping siblings
+    expect(content).toMatch(/#projectTabBar[\s\S]*?scrollbar-width:\s*none/);
+    // Ensure thoughtBadgeBar flexes dynamically with protected min-width to prevent squishing
     expect(content).toMatch(/#thoughtBadgeBar[\s\S]*?flex:\s*1\s+1/);
-    expect(content).toMatch(/#thoughtBadgeBar[\s\S]*?min-width:\s*0/);
+    expect(content).toMatch(/#thoughtBadgeBar[\s\S]*?min-width:\s*175px/);
     // Ensure latestThoughtContent truncates gracefully
     expect(content).toMatch(/#latestThoughtContent[\s\S]*?text-overflow:\s*ellipsis/);
+    expect(content).toMatch(/#latestThoughtContent[\s\S]*?min-width:\s*0/);
+
+    // Verify DOM structure: projectTabsContainer resides inside projectTabBar, separate from thoughtBadgeBar
+    const projectTabSectionMatch = content.match(/id=["']projectTabBar["'][\s\S]*?id=["']projectTabsContainer["']/);
+    expect(projectTabSectionMatch).toBeTruthy();
+
+    const thoughtBadgeMatch = content.match(/id=["']thoughtBadgeBar["'][\s\S]*?id=["']thoughtDurationBadge["'][\s\S]*?id=["']latestThoughtContent["']/);
+    expect(thoughtBadgeMatch).toBeTruthy();
+
+    // Verify neither container uses position absolute which could cause overlapping
+    expect(content).not.toMatch(/#projectTabBar\s*\{[^}]*position:\s*absolute/);
+    expect(content).not.toMatch(/#thoughtBadgeBar\s*\{[^}]*position:\s*absolute/);
   });
 
   it('unblocks the center 3D canvas viewport by removing center-blocking floating panels', () => {

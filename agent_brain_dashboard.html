@@ -107,25 +107,28 @@
       padding-bottom: 12px;
     }
 
-    #cognitionDock {
+    #cognitionDock,
+    #bottomCognitionDock {
       bottom: 8px;
       left: 16px;
       right: 16px;
     }
 
-    #projectTabBar {
+    #projectTabBar,
+    #projectTabsBar {
       display: flex;
       align-items: center;
       gap: 8px;
       overflow-x: auto;
       scrollbar-width: none;
       -ms-overflow-style: none;
-      flex-shrink: 0;
-      max-width: 48%;
+      flex: 0 1 auto;
+      max-width: min(46%, calc(100% - 480px));
       min-width: 0;
     }
 
-    #projectTabBar::-webkit-scrollbar {
+    #projectTabBar::-webkit-scrollbar,
+    #projectTabsBar::-webkit-scrollbar {
       display: none;
     }
 
@@ -134,11 +137,17 @@
       align-items: center;
       gap: 10px;
       flex: 1 1 0%;
-      min-width: 0;
+      min-width: 175px;
       overflow: hidden;
     }
 
-    #latestThoughtContent {
+    #thoughtDurationBadge,
+    #thoughtTriggerBadge {
+      flex-shrink: 0;
+    }
+
+    #latestThoughtContent,
+    #thoughtPreviewText {
       flex: 1 1 0%;
       min-width: 0;
       overflow: hidden;
@@ -667,13 +676,13 @@
   </aside>
 
   <!-- DEDICATED BOTTOM COGNITION & MULTI-PROJECT DOCK ("SA BABA") -->
-  <div id="cognitionDock" class="absolute bottom-2.5 left-4 right-4 z-30 apple-glass rounded-xl flex flex-col shadow-2xl transition-all duration-300">
+  <div id="cognitionDock" data-testid="bottomCognitionDock" class="absolute bottom-2.5 left-4 right-4 z-30 apple-glass rounded-xl flex flex-col shadow-2xl transition-all duration-300">
     
     <!-- Dock Top Strip (Always Visible, Height 44px) -->
     <div class="h-11 px-4 flex items-center justify-between gap-3 text-xs border-b border-white/10 w-full overflow-hidden">
       
       <!-- Left: Multi-Project Tabs Strip -->
-      <div class="flex items-center gap-2 overflow-x-auto shrink-0 max-w-[48%] min-w-0 scrollbar-none" id="projectTabBar" style="scrollbar-width: none; -ms-overflow-style: none;">
+      <div class="flex items-center gap-2 overflow-x-auto shrink-0 min-w-0 scrollbar-none" id="projectTabBar" data-testid="projectTabsBar" style="scrollbar-width: none; -ms-overflow-style: none;">
         <span class="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold mono mr-1 flex items-center gap-1.5 shrink-0">
           <svg class="w-3.5 h-3.5 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
@@ -688,10 +697,10 @@
       </div>
 
       <!-- Center: Antigravity Thought Badge (Signature Native Style) -->
-      <div id="thoughtBadgeBar" class="flex items-center gap-2.5 cursor-pointer px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition group flex-1 min-w-0 overflow-hidden">
+      <div id="thoughtBadgeBar" class="flex items-center gap-2.5 cursor-pointer px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition group flex-1 min-w-[175px] overflow-hidden">
         <div class="flex items-center gap-2 shrink-0">
           <span id="thinkingDot" class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#00f0ff] animate-pulse shrink-0"></span>
-          <div id="thoughtDurationBadge" class="thought-pill group-hover:border-cyan-400 transition shrink-0">
+          <div id="thoughtDurationBadge" data-testid="thoughtTriggerBadge" class="thought-pill group-hover:border-cyan-400 transition shrink-0">
             <span id="thoughtDurationText">Thought for 25s</span>
             <svg id="thoughtChevron" class="w-3.5 h-3.5 text-cyan-400 transition-transform duration-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="9 18 15 12 9 6"></polyline>
@@ -699,7 +708,7 @@
           </div>
         </div>
         <span class="text-white/20 shrink-0">|</span>
-        <div id="latestThoughtContent" class="text-slate-200 mono text-[11px] truncate flex-1 min-w-0 italic">
+        <div id="latestThoughtContent" data-testid="thoughtPreviewText" class="text-slate-200 mono text-[11px] truncate flex-1 min-w-0 italic">
           "Observing workspace activity and listening to Antigravity live transcript telemetry..."
         </div>
       </div>
@@ -2581,7 +2590,13 @@
 
       // Update Tab Pill styles
       document.querySelectorAll('.project-tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.projectId === newId);
+        const isActive = btn.dataset.projectId === newId;
+        btn.classList.toggle('active', isActive);
+        if (isActive) {
+          try {
+            btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          } catch (_) {}
+        }
       });
 
       // Smooth slide/fade transition between panes
