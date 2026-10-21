@@ -339,6 +339,18 @@ describe('Agent Brain 3D Dashboard & UI Verification', () => {
     expect(dashboardContent).toContain('culled');
     expect(dashboardContent).toContain('smoothedFps');
 
+    // Level of Detail (LOD) & Distance Culling
+    expect(dashboardContent).toContain('cfg.lodDist');
+    expect(dashboardContent).toContain('isDistantNode');
+    expect(dashboardContent).toContain('isDistantCluster');
+
+    // Zero-allocation projection buffer reuse & star batching
+    expect(dashboardContent).toContain('scratchProj');
+    expect(dashboardContent).toContain('coreProjBuffer');
+    expect(dashboardContent).toContain('starBuckets');
+    expect(dashboardContent).toContain('nodeDepthComparator');
+    expect(dashboardContent).toContain('project3D(px, py, pz, out)');
+
     // VS Code ConstellationGraph optimizations
     const graphComponentPath = path.resolve(__dirname, '../src/webview/components/ConstellationGraph.tsx');
     expect(fs.existsSync(graphComponentPath)).toBe(true);
@@ -348,6 +360,12 @@ describe('Agent Brain 3D Dashboard & UI Verification', () => {
     expect(graphContent).toContain('fpsDisplay');
     expect(graphContent).toContain('minX');
     expect(graphContent).toContain('maxX');
+    expect(graphContent).toContain('getGlowSprite');
+    expect(graphContent).toContain('glowSpriteCache');
+    expect(graphContent).toContain('starBucketsRef');
+    expect(graphContent).toContain('computeClusterCentroids');
+    expect(graphContent).toContain('projectedOctaRef');
+    expect(graphContent).toContain('CRYSTAL_EDGES');
   });
 });
 

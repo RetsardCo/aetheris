@@ -38,6 +38,73 @@ interface CometParticle {
   tail: Array<{ x: number; y: number; alpha: number }>;
 }
 
+// Module-level Pre-rendered Glow Sprite Atlas Cache (Zero ShadowBlur / Zero Save-Restore in hot loop)
+const glowSpriteCache = new Map<string, HTMLCanvasElement>();
+
+function getGlowSprite(color: string): HTMLCanvasElement {
+  let sprite = glowSpriteCache.get(color);
+  if (!sprite) {
+    sprite = document.createElement('canvas');
+    sprite.width = 64;
+    sprite.height = 64;
+    const sctx = sprite.getContext('2d');
+    if (sctx) {
+      const grad = sctx.createRadialGradient(32, 32, 4, 32, 32, 30);
+      grad.addColorStop(0, color);
+      grad.addColorStop(0.45, color.replace(/[\d\.]+\)$/, '0.35)'));
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      sctx.fillStyle = grad;
+      sctx.beginPath();
+      sctx.arc(32, 32, 30, 0, Math.PI * 2);
+      sctx.fill();
+    }
+    glowSpriteCache.set(color, sprite);
+  }
+  return sprite;
+}
+
+const CRYSTAL_SIZE = 55;
+const OCTA_VERTICES = [
+  { x: 0, y: -CRYSTAL_SIZE * 1.3, z: 0 }, // top
+  { x: 0, y: CRYSTAL_SIZE * 1.3, z: 0 },  // bottom
+  { x: -CRYSTAL_SIZE, y: 0, z: -CRYSTAL_SIZE },
+  { x: CRYSTAL_SIZE, y: 0, z: -CRYSTAL_SIZE },
+  { x: CRYSTAL_SIZE, y: 0, z: CRYSTAL_SIZE },
+  { x: -CRYSTAL_SIZE, y: 0, z: CRYSTAL_SIZE }
+];
+const CRYSTAL_EDGES: [number, number][] = [
+  [0, 2], [0, 3], [0, 4], [0, 5],
+  [1, 2], [1, 3], [1, 4], [1, 5],
+  [2, 3], [3, 4], [4, 5], [5, 2]
+];
+
+function computeClusterCentroids(points: Map<string, NodeSimulationPoint>): Array<{ folderName: string; x: number; y: number }> {
+  const clusterSums = new Map<string, { x: number; y: number; count: number }>();
+  points.forEach((p) => {
+    if (p.folder === 'root files' || !p.folder) return;
+    const ex = clusterSums.get(p.folder);
+    if (ex) {
+      ex.x += p.x;
+      ex.y += p.y;
+      ex.count++;
+    } else {
+      clusterSums.set(p.folder, { x: p.x, y: p.y, count: 1 });
+    }
+  });
+
+  const calculatedCentroids: Array<{ folderName: string; x: number; y: number }> = [];
+  clusterSums.forEach((c, folderName) => {
+    if (c.count >= 2) {
+      calculatedCentroids.push({
+        folderName: folderName.toUpperCase(),
+        x: c.x / c.count,
+        y: c.y / c.count
+      });
+    }
+  });
+  return calculatedCentroids;
+}
+
 export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
   nodes,
   edges,
@@ -64,6 +131,17 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
 
   // Crystal rotation angle
   const crystalAngleRef = useRef(0);
+  const projectedOctaRef = useRef([
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 }
+  ]);
+
+  // Pre-computed folder cluster centroids
+  const clusterCentroidsRef = useRef<Array<{ folderName: string; x: number; y: number }>>([]);
 
   // Comet particle
   const cometRef = useRef<CometParticle>({
@@ -92,21 +170,24 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
   // Simulation points
   const pointsRef = useRef<Map<string, NodeSimulationPoint>>(new Map());
 
-  // Background stars
-  const starsRef = useRef<Array<{ x: number; y: number; r: number; alpha: number }>>([]);
+  // Background stars grouped into alpha buckets for single-pass batch rendering
+  const starBucketsRef = useRef<Array<{ color: string; stars: Array<{ x: number; y: number; r: number }> }>>([]);
 
   useEffect(() => {
-    // Generate background ambient stars
-    const stars = [];
+    // Generate background ambient stars pre-grouped into alpha buckets
+    const buckets = [
+      { color: 'rgba(255, 255, 255, 0.25)', stars: [] as Array<{ x: number; y: number; r: number }> },
+      { color: 'rgba(255, 255, 255, 0.50)', stars: [] as Array<{ x: number; y: number; r: number }> },
+      { color: 'rgba(255, 255, 255, 0.85)', stars: [] as Array<{ x: number; y: number; r: number }> }
+    ];
     for (let i = 0; i < 120; i++) {
-      stars.push({
+      buckets[i % 3].stars.push({
         x: (Math.random() - 0.5) * 2000,
         y: (Math.random() - 0.5) * 2000,
-        r: Math.random() * 1.5 + 0.5,
-        alpha: Math.random() * 0.7 + 0.2
+        r: Math.random() * 1.5 + 0.5
       });
     }
-    starsRef.current = stars;
+    starBucketsRef.current = buckets;
   }, []);
 
   // Sync simulation points with display nodes
@@ -186,6 +267,7 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
     });
 
     pointsRef.current = newMap;
+    clusterCentroidsRef.current = computeClusterCentroids(newMap);
   }, [displayNodes]);
 
   // Main Canvas render loop
@@ -246,19 +328,23 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
       const minY = -panY / scale - 60;
       const maxY = (height - panY) / scale + 60;
 
-      // 1. Draw ambient space background stars (with viewport culling)
-      for (const star of starsRef.current) {
-        if (star.x < minX || star.x > maxX || star.y < minY || star.y > maxY) continue;
-        ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+      // 1. Draw ambient space background stars (with viewport culling & batched alpha buckets)
+      for (let b = 0; b < starBucketsRef.current.length; b++) {
+        const bucket = starBucketsRef.current[b];
+        ctx.fillStyle = bucket.color;
         ctx.beginPath();
-        ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+        for (let i = 0; i < bucket.stars.length; i++) {
+          const star = bucket.stars[i];
+          if (star.x < minX || star.x > maxX || star.y < minY || star.y > maxY) continue;
+          ctx.moveTo(star.x + star.r, star.y);
+          ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+        }
         ctx.fill();
       }
 
       // 2. Draw Center Crystal (3D Wireframe Octahedron & Horizontal Scanline)
       crystalAngleRef.current += 0.008;
       const cAngle = crystalAngleRef.current;
-      const crystalSize = 55;
 
       // Draw horizontal horizon scanline (cached gradient)
       if (!cachedScanGrad) {
@@ -276,35 +362,23 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
       ctx.lineTo(350, 0);
       ctx.stroke();
 
-      // Octahedron 3D projection
-      const vertices = [
-        { x: 0, y: -crystalSize * 1.3, z: 0 }, // top
-        { x: 0, y: crystalSize * 1.3, z: 0 },  // bottom
-        { x: -crystalSize, y: 0, z: -crystalSize },
-        { x: crystalSize, y: 0, z: -crystalSize },
-        { x: crystalSize, y: 0, z: crystalSize },
-        { x: -crystalSize, y: 0, z: crystalSize }
-      ];
+      // Octahedron 3D projection (Zero-allocation using projectedOctaRef buffer)
+      const projected = projectedOctaRef.current;
+      const radY = cAngle;
+      const radX = 0.25;
+      const cosY = Math.cos(radY), sinY = Math.sin(radY);
+      const cosX = Math.cos(radX), sinX = Math.sin(radX);
 
-      // Rotate around Y and slight X tilt
-      const projected = vertices.map((v) => {
-        const radY = cAngle;
-        const radX = 0.25;
-        // Rotate Y
-        const x1 = v.x * Math.cos(radY) + v.z * Math.sin(radY);
-        const z1 = -v.x * Math.sin(radY) + v.z * Math.cos(radY);
-        // Rotate X
-        const y2 = v.y * Math.cos(radX) - z1 * Math.sin(radX);
-        const z2 = v.y * Math.sin(radX) + z1 * Math.cos(radX);
-        return { x: x1, y: y2, z: z2 };
-      });
-
-      // Octahedron faces / edges
-      const crystalEdges = [
-        [0, 2], [0, 3], [0, 4], [0, 5],
-        [1, 2], [1, 3], [1, 4], [1, 5],
-        [2, 3], [3, 4], [4, 5], [5, 2]
-      ];
+      for (let i = 0; i < OCTA_VERTICES.length; i++) {
+        const v = OCTA_VERTICES[i];
+        const x1 = v.x * cosY + v.z * sinY;
+        const z1 = -v.x * sinY + v.z * cosY;
+        const y2 = v.y * cosX - z1 * sinX;
+        const z2 = v.y * sinX + z1 * cosX;
+        projected[i].x = x1;
+        projected[i].y = y2;
+        projected[i].z = z2;
+      }
 
       ctx.save();
       ctx.shadowBlur = 14;
@@ -314,7 +388,8 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
 
       // Batched crystal edges stroke
       ctx.beginPath();
-      for (const [i1, i2] of crystalEdges) {
+      for (let e = 0; e < CRYSTAL_EDGES.length; e++) {
+        const [i1, i2] = CRYSTAL_EDGES[e];
         ctx.moveTo(projected[i1].x, projected[i1].y);
         ctx.lineTo(projected[i2].x, projected[i2].y);
       }
@@ -323,7 +398,8 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
       // Draw crystal vertex points (batched)
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      for (const p of projected) {
+      for (let i = 0; i < projected.length; i++) {
+        const p = projected[i];
         ctx.moveTo(p.x + 2, p.y);
         ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
       }
@@ -350,7 +426,7 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
       }
       ctx.stroke();
 
-      // 4. Draw Constellation Nodes (with Frustum & Viewport Culling)
+      // 4. Draw Constellation Nodes (with Sprite Atlas & Frustum Culling)
       const queryLower = searchQuery.toLowerCase().trim();
 
       points.forEach((p) => {
@@ -360,16 +436,27 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
         const isMatch = queryLower ? p.id.toLowerCase().includes(queryLower) : false;
         const isHovered = hoveredNodeRef.current?.id === p.id;
 
-        // Draw glow aura
-        ctx.save();
         if (isMatch || isHovered) {
+          ctx.save();
           ctx.shadowBlur = 24;
           ctx.shadowColor = '#38bdf8';
           ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, isHovered ? p.radius + 2 : p.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
         } else {
-          ctx.shadowBlur = p.radius > 4 ? 14 : 0;
-          ctx.shadowColor = p.glowColor;
+          // Ultra-fast cached sprite drawImage (no shadowBlur / save / restore overhead)
+          if (p.radius > 4) {
+            const glowSprite = getGlowSprite(p.glowColor);
+            const glowR = p.radius * 2.8;
+            ctx.drawImage(glowSprite, p.x - glowR, p.y - glowR, glowR * 2, glowR * 2);
+          }
+
           ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
         }
 
         // Draw concentric pulse ring if active
@@ -381,12 +468,6 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
           ctx.stroke();
         }
 
-        // Main node dot
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, isHovered ? p.radius + 2 : p.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
         // Node Label
         const shouldShowLabel = showAllLabels || isMatch || isHovered || p.radius > 5;
         if (shouldShowLabel && scale > 0.4) {
@@ -396,35 +477,20 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
         }
       });
 
-      // 4.5 Draw Major Folder Cluster Centroid Titles (as shown in Agent Brain reference)
-      if (scale > 0.35) {
-        const clusterSums = new Map<string, { x: number; y: number; count: number }>();
-        points.forEach((p) => {
-          if (p.folder === 'root files' || !p.folder) return;
-          const ex = clusterSums.get(p.folder);
-          if (ex) {
-            ex.x += p.x;
-            ex.y += p.y;
-            ex.count++;
-          } else {
-            clusterSums.set(p.folder, { x: p.x, y: p.y, count: 1 });
-          }
-        });
-
+      // 4.5 Draw Major Folder Cluster Centroid Titles (0-allocation precomputed)
+      if (scale > 0.35 && clusterCentroidsRef.current.length > 0) {
         ctx.save();
-        clusterSums.forEach((c, folderName) => {
-          if (c.count < 2) return;
-          const avgX = c.x / c.count;
-          const avgY = c.y / c.count;
-
-          ctx.font = '700 11px ui-monospace, SFMono-Regular, Menlo, monospace';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
-          ctx.fillStyle = 'rgba(245, 158, 11, 0.85)';
-          ctx.fillText(folderName.toUpperCase(), avgX, avgY);
-        });
+        ctx.font = '700 11px ui-monospace, SFMono-Regular, Menlo, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.85)';
+        for (let i = 0; i < clusterCentroidsRef.current.length; i++) {
+          const c = clusterCentroidsRef.current[i];
+          if (c.x < minX || c.x > maxX || c.y < minY || c.y > maxY) continue;
+          ctx.fillText(c.folderName, c.x, c.y);
+        }
         ctx.restore();
       }
 
@@ -602,6 +668,7 @@ export const ConstellationGraph: React.FC<ConstellationGraphProps> = ({
       p.x = Math.cos(angle) * dist;
       p.y = Math.sin(angle) * dist;
     });
+    clusterCentroidsRef.current = computeClusterCentroids(pointsRef.current);
   };
 
   const handleResetView = () => {

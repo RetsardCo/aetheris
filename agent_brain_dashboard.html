@@ -1299,8 +1299,8 @@
       return thoughtAuraSprite;
     }
 
-    // 3D Point Perspective Projection Function with Viewport Culling
-    function project3D(px, py, pz) {
+    // 3D Point Perspective Projection Function with Viewport Culling & Zero-Allocation Buffer Reuse
+    function project3D(px, py, pz, out) {
       const cx = width / 2;
       const cy = height / 2;
 
@@ -1323,7 +1323,10 @@
 
       // Translate along camera viewing axis
       const camZ = z2 + camera.dist;
-      if (camZ <= 20) return null; // Near clipping plane
+      if (camZ <= 20) {
+        if (out) { out.culled = true; out.z = -1; }
+        return null; // Near clipping plane
+      }
 
       // Perspective scale division
       const scale = camera.fov / camZ;
@@ -1334,14 +1337,23 @@
       const margin = 120;
       const culled = (screenX < -margin || screenX > width + margin || screenY < -margin || screenY > height + margin);
 
-      return {
-        x: screenX,
-        y: screenY,
-        z: camZ,
-        scale: scale,
-        depthFactor: Math.min(2.4, Math.max(0.25, scale * 1.15)),
-        culled: culled
-      };
+      if (!out) {
+        return {
+          x: screenX,
+          y: screenY,
+          z: camZ,
+          scale: scale,
+          depthFactor: Math.min(2.4, Math.max(0.25, scale * 1.15)),
+          culled: culled
+        };
+      }
+      out.x = screenX;
+      out.y = screenY;
+      out.z = camZ;
+      out.scale = scale;
+      out.depthFactor = Math.min(2.4, Math.max(0.25, scale * 1.15));
+      out.culled = culled;
+      return out;
     }
 
     // =========================================================================
@@ -1541,19 +1553,27 @@
       { angle: Math.PI * 1.4, speed: 0.013, radA: 280, radB: 380, tiltX: 0.7, tiltZ: -0.4, color: '#10b981', trail: [] }
     ];
 
-    // Distant 3D Background Starfield
+    // Distant 3D Background Starfield (Pre-grouped by alpha bucket for 0-allocation batching)
+    const starBuckets = [
+      { color: 'rgba(226, 232, 240, 0.25)', stars: [] },
+      { color: 'rgba(226, 232, 240, 0.50)', stars: [] },
+      { color: 'rgba(226, 232, 240, 0.80)', stars: [] }
+    ];
     const backgroundStars3D = [];
     for (let i = 0; i < 140; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = (Math.random() - 0.5) * Math.PI;
       const dist = 1200 + Math.random() * 800;
-      backgroundStars3D.push({
+      const star = {
         x: Math.cos(theta) * Math.cos(phi) * dist,
         y: Math.sin(phi) * dist,
         z: Math.sin(theta) * Math.cos(phi) * dist,
         size: Math.random() * 1.5 + 0.5,
-        alpha: Math.random() * 0.6 + 0.2
-      });
+        alpha: Math.random() * 0.6 + 0.2,
+        _proj: null
+      };
+      backgroundStars3D.push(star);
+      starBuckets[i % 3].stars.push(star);
     }
 
     // =========================================================================
@@ -1564,10 +1584,54 @@
     let fpsTimer = performance.now();
     let smoothedFps = 60.0;
 
-    // Pre-allocated reusable arrays to eliminate GC pressure
+    // Pre-allocated reusable arrays and projection scratch buffers to eliminate GC pressure
     const visibleNodes = [];
     const edgeBuckets = new Map();
     const highEdges = [];
+    const scratchProj = { x: 0, y: 0, z: 0, scale: 0, depthFactor: 0, culled: false };
+    const coreProjBuffer = { x: 0, y: 0, z: 0, scale: 0, depthFactor: 0, culled: false };
+    const projectedOcta = Array.from({ length: 6 }, () => ({ x: 0, y: 0, z: 0, scale: 0, depthFactor: 0, culled: false }));
+    const cageVerts = Array.from({ length: 6 }, () => ({ x: 0, y: 0, z: 0, scale: 0, depthFactor: 0, culled: false }));
+    const clusterGroups = new Map();
+    const clusterCentroidsList = Object.values(clusterCentroids);
+    const RING_RADII = [180, 360, 540];
+    const cageEdges = [
+      [0,1],[0,2],[0,3],[0,4],
+      [1,2],[2,3],[3,4],[4,1],
+      [5,1],[5,2],[5,3],[5,4]
+    ];
+    const nodeDepthComparator = (a, b) => b._proj.z - a._proj.z;
+
+    // Cached DOM elements to eliminate layout recalculation and DOM tree thrashing
+    let chkClusterHullsEl = null;
+    let chkConnectionsEl = null;
+    let chkAttentionEl = null;
+    let chkLabelsEl = null;
+    let elPitch = null;
+    let elYaw = null;
+    let elZoom = null;
+    let fpsMeterEl = null;
+    let fpsBarEl = null;
+    let lastTelemetryPitch = null;
+    let lastTelemetryYaw = null;
+    let lastTelemetryZoom = null;
+
+    function initDomCaches() {
+      chkClusterHullsEl = document.getElementById('chkClusterHulls');
+      chkConnectionsEl = document.getElementById('chkConnections');
+      chkAttentionEl = document.getElementById('chkAttention');
+      chkLabelsEl = document.getElementById('chkLabels');
+      elPitch = document.getElementById('telemetryPitch');
+      elYaw = document.getElementById('telemetryYaw');
+      elZoom = document.getElementById('telemetryZoom');
+      fpsMeterEl = document.getElementById('fpsMeter');
+      fpsBarEl = document.getElementById('fpsBar');
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initDomCaches);
+    } else {
+      initDomCaches();
+    }
 
     // Quality mode selector handlers
     function setQualityMode(mode) {
@@ -1596,19 +1660,19 @@
     document.getElementById('btnPerfHigh')?.addEventListener('click', () => setQualityMode('high'));
     document.getElementById('btnPerfBalanced')?.addEventListener('click', () => setQualityMode('balanced'));
     document.getElementById('btnPerfPerformance')?.addEventListener('click', () => setQualityMode('turbo'));
+    setQualityMode(currentQuality);
 
     function render(now) {
       const dt = (now - lastFrameTime) / 1000;
       lastFrameTime = now;
       const cfg = QualitySettings[currentQuality] || QualitySettings.balanced;
 
-      // Smoothed Real-Time FPS Measurement
+      // Smoothed Real-Time FPS Measurement (Cached DOM references)
       frameCount++;
       const elapsedFps = now - fpsTimer;
       if (elapsedFps >= 300) {
         const instantFps = (frameCount * 1000) / elapsedFps;
         smoothedFps = smoothedFps === 0 ? instantFps : (smoothedFps * 0.75 + instantFps * 0.25);
-        const fpsMeterEl = document.getElementById('fpsMeter');
         if (fpsMeterEl) {
           fpsMeterEl.textContent = `${smoothedFps.toFixed(1)} FPS`;
           if (smoothedFps >= 55) {
@@ -1619,7 +1683,6 @@
             fpsMeterEl.className = 'text-rose-400 font-bold';
           }
         }
-        const fpsBarEl = document.getElementById('fpsBar');
         if (fpsBarEl) {
           fpsBarEl.style.width = `${Math.min(100, (smoothedFps / 60) * 100)}%`;
         }
@@ -1662,10 +1725,13 @@
       camera.targetPitch = Math.max(-1.48, Math.min(1.48, camera.targetPitch));
       camera.pitch += (camera.targetPitch - camera.pitch) * 0.10;
 
-      // Update orientation HUD
-      document.getElementById('telemetryPitch').textContent = `${Math.round((camera.pitch * 180) / Math.PI)}°`;
-      document.getElementById('telemetryYaw').textContent = `${Math.round((camera.yaw * 180) / Math.PI)}°`;
-      document.getElementById('telemetryZoom').textContent = `${(760 / camera.dist).toFixed(1)}x`;
+      // Throttled Orientation HUD updates (zero layout thrashing)
+      const degPitch = Math.round((camera.pitch * 180) / Math.PI);
+      const degYaw = Math.round((camera.yaw * 180) / Math.PI);
+      const zoomStr = (760 / camera.dist).toFixed(1);
+      if (lastTelemetryPitch !== degPitch && elPitch) { elPitch.textContent = `${degPitch}°`; lastTelemetryPitch = degPitch; }
+      if (lastTelemetryYaw !== degYaw && elYaw) { elYaw.textContent = `${degYaw}°`; lastTelemetryYaw = degYaw; }
+      if (lastTelemetryZoom !== zoomStr && elZoom) { elZoom.textContent = `${zoomStr}x`; lastTelemetryZoom = zoomStr; }
 
       // Clear Canvas
       ctx.clearRect(0, 0, width, height);
@@ -1690,34 +1756,39 @@
 
         if (n.pulse > 0) n.pulse = Math.max(0, n.pulse - 0.045);
 
-        // Pre-project node into 2D screen space
-        n._proj = project3D(n.x, n.y, n.z);
+        // Pre-project node into 2D screen space (Zero-allocation in-place buffer)
+        n._proj = project3D(n.x, n.y, n.z, n._proj);
       }
 
-      // 1. Distant 3D Background Starfield (Batched)
-      for (let i = 0; i < backgroundStars3D.length; i++) {
-        const star = backgroundStars3D[i];
-        const p = project3D(star.x, star.y, star.z);
-        if (p && !p.culled) {
-          ctx.fillStyle = `rgba(226, 232, 240, ${star.alpha})`;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, star.size * p.depthFactor, 0, Math.PI * 2);
-          ctx.fill();
+      // 1. Distant 3D Background Starfield (Batched by alpha buckets - 3 draw calls total!)
+      for (let b = 0; b < starBuckets.length; b++) {
+        const bucket = starBuckets[b];
+        ctx.fillStyle = bucket.color;
+        ctx.beginPath();
+        for (let i = 0; i < bucket.stars.length; i++) {
+          const star = bucket.stars[i];
+          star._proj = project3D(star.x, star.y, star.z, star._proj);
+          const p = star._proj;
+          if (p && !p.culled) {
+            const r = star.size * p.depthFactor;
+            ctx.moveTo(p.x + r, p.y);
+            ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          }
         }
+        ctx.fill();
       }
 
       // 2. Ground 3D Coordinate Plane / Latitude Rings (Batched into single stroke)
       ctx.strokeStyle = 'rgba(6, 182, 212, 0.09)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      const ringRadii = [180, 360, 540];
       const ringSegs = cfg.cageSegments || 24;
-      for (let r = 0; r < ringRadii.length; r++) {
-        const rad = ringRadii[r];
+      for (let r = 0; r < RING_RADII.length; r++) {
+        const rad = RING_RADII[r];
         let started = false;
         for (let i = 0; i <= ringSegs; i++) {
           const a = (i / ringSegs) * Math.PI * 2;
-          const proj = project3D(Math.cos(a) * rad, 0, Math.sin(a) * rad);
+          const proj = project3D(Math.cos(a) * rad, 0, Math.sin(a) * rad, scratchProj);
           if (proj && !proj.culled) {
             if (!started) { ctx.moveTo(proj.x, proj.y); started = true; }
             else ctx.lineTo(proj.x, proj.y);
@@ -1735,7 +1806,7 @@
       corePulse += 0.035;
 
       const reactorScale = 1.0 + Math.sin(corePulse) * 0.08;
-      const coreProj = project3D(0, 0, 0);
+      const coreProj = project3D(0, 0, 0, coreProjBuffer);
 
       if (coreProj && !coreProj.culled) {
         const coreRadius = 45 * coreProj.depthFactor * reactorScale;
@@ -1747,9 +1818,8 @@
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        const cCentroids = Object.values(clusterCentroids);
-        for (let i = 0; i < cCentroids.length; i++) {
-          const ccp = project3D(cCentroids[i].cx, cCentroids[i].cy, cCentroids[i].cz);
+        for (let i = 0; i < clusterCentroidsList.length; i++) {
+          const ccp = project3D(clusterCentroidsList[i].cx, clusterCentroidsList[i].cy, clusterCentroidsList[i].cz, scratchProj);
           if (ccp && !ccp.culled) {
             ctx.moveTo(coreProj.x, coreProj.y);
             ctx.lineTo(ccp.x, ccp.y);
@@ -1757,14 +1827,15 @@
         }
         ctx.stroke();
 
-        // Project Octahedron Crystal Core Vertices
+        // Project Octahedron Crystal Core Vertices (Zero-allocation using buffer)
         const cosA = Math.cos(gyroAngleY), sinA = Math.sin(gyroAngleY);
-        const projectedOcta = octaVertices3D.map(v => {
-          const rx = v.x * cosA - v.z * sinA;
-          const rz = v.x * sinA + v.z * cosA;
-          const ry = v.y;
-          return project3D(rx * reactorScale, ry * reactorScale, rz * reactorScale);
-        });
+        for (let v = 0; v < octaVertices3D.length; v++) {
+          const vert = octaVertices3D[v];
+          const rx = vert.x * cosA - vert.z * sinA;
+          const rz = vert.x * sinA + vert.z * cosA;
+          const ry = vert.y;
+          projectedOcta[v] = project3D(rx * reactorScale, ry * reactorScale, rz * reactorScale, projectedOcta[v]);
+        }
 
         // Octahedron Wireframe Edges (Batched into single stroke!)
         ctx.strokeStyle = 'rgba(0, 240, 255, 0.88)';
@@ -1774,23 +1845,24 @@
           ctx.shadowBlur = 12;
         }
         ctx.beginPath();
-        octaEdges3D.forEach(([i, j]) => {
+        for (let e = 0; e < octaEdges3D.length; e++) {
+          const [i, j] = octaEdges3D[e];
           const p1 = projectedOcta[i];
           const p2 = projectedOcta[j];
           if (p1 && p2 && (!p1.culled || !p2.culled)) {
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
           }
-        });
+        }
         ctx.stroke();
         ctx.shadowBlur = 0;
       }
 
       // 4. 3D Cluster Bounding Meshes: clusterHull (TRUE 3D GEOMETRIC CONSTELLATION CAGES)
-      const showHulls = document.getElementById('chkClusterHulls').checked;
+      const showHulls = chkClusterHullsEl ? chkClusterHullsEl.checked : true;
       if (showHulls) {
-        // Group nodes by cluster
-        const clusterGroups = new Map();
+        // Group nodes by cluster (Zero allocations by reusing existing Map and arrays)
+        clusterGroups.forEach(grp => grp.length = 0);
         for (let i = 0; i < nodes.length; i++) {
           const n = nodes[i];
           let grp = clusterGroups.get(n.cluster);
@@ -1804,60 +1876,59 @@
         clusterGroups.forEach((cNodes, cName) => {
           if (cNodes.length >= 2) {
             const cInfo = clusterCentroids[cName] || { cx: 0, cy: 0, cz: 0, rad: 150 };
-            const cProj = project3D(cInfo.cx, cInfo.cy, cInfo.cz);
+            cInfo._proj = project3D(cInfo.cx, cInfo.cy, cInfo.cz, cInfo._proj);
+            const cProj = cInfo._proj;
             if (!cProj) return;
 
             const color = clusterColors[cName] || '#38bdf8';
+            // LOD Check: Skip heavy wireframes for distant clusters
+            const isDistantCluster = cProj.z > (cfg.lodDist || 1400);
 
-            // 1. Tilted 3D Orbital Latitude Ring (Batched into single stroke!)
-            const ringPts = cfg.cageSegments || 24;
-            const ringRad = cInfo.rad * 0.95;
-            ctx.strokeStyle = `${color}45`;
-            ctx.lineWidth = 1.4;
-            ctx.beginPath();
-            let startedRing = false;
-            for (let i = 0; i <= ringPts; i++) {
-              const a = (i / ringPts) * Math.PI * 2;
-              const rx = cInfo.cx + Math.cos(a) * ringRad;
-              const ry = cInfo.cy + Math.sin(a) * ringRad * 0.4;
-              const rz = cInfo.cz + Math.sin(a) * ringRad * 0.9;
-              const rp = project3D(rx, ry, rz);
-              if (rp && !rp.culled) {
-                if (!startedRing) { ctx.moveTo(rp.x, rp.y); startedRing = true; }
-                else ctx.lineTo(rp.x, rp.y);
-              } else {
-                startedRing = false;
+            if (!isDistantCluster) {
+              // 1. Tilted 3D Orbital Latitude Ring (Batched into single stroke!)
+              const ringPts = cfg.cageSegments || 24;
+              const ringRad = cInfo.rad * 0.95;
+              ctx.strokeStyle = `${color}45`;
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              let startedRing = false;
+              for (let i = 0; i <= ringPts; i++) {
+                const a = (i / ringPts) * Math.PI * 2;
+                const rx = cInfo.cx + Math.cos(a) * ringRad;
+                const ry = cInfo.cy + Math.sin(a) * ringRad * 0.4;
+                const rz = cInfo.cz + Math.sin(a) * ringRad * 0.9;
+                const rp = project3D(rx, ry, rz, scratchProj);
+                if (rp && !rp.culled) {
+                  if (!startedRing) { ctx.moveTo(rp.x, rp.y); startedRing = true; }
+                  else ctx.lineTo(rp.x, rp.y);
+                } else {
+                  startedRing = false;
+                }
               }
+              ctx.stroke();
+
+              // 2. 3D Geometric Polyhedral Cage Vertices around cluster (Batched into single stroke!)
+              cageVerts[0] = project3D(cInfo.cx, cInfo.cy - cInfo.rad * 0.7, cInfo.cz, cageVerts[0]);
+              cageVerts[1] = project3D(cInfo.cx + cInfo.rad * 0.7, cInfo.cy, cInfo.cz + cInfo.rad * 0.7, cageVerts[1]);
+              cageVerts[2] = project3D(cInfo.cx - cInfo.rad * 0.7, cInfo.cy, cInfo.cz + cInfo.rad * 0.7, cageVerts[2]);
+              cageVerts[3] = project3D(cInfo.cx - cInfo.rad * 0.7, cInfo.cy, cInfo.cz - cInfo.rad * 0.7, cageVerts[3]);
+              cageVerts[4] = project3D(cInfo.cx + cInfo.rad * 0.7, cInfo.cy, cInfo.cz - cInfo.rad * 0.7, cageVerts[4]);
+              cageVerts[5] = project3D(cInfo.cx, cInfo.cy + cInfo.rad * 0.7, cInfo.cz, cageVerts[5]);
+
+              ctx.strokeStyle = `${color}30`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              for (let e = 0; e < cageEdges.length; e++) {
+                const [i, j] = cageEdges[e];
+                const vA = cageVerts[i];
+                const vB = cageVerts[j];
+                if (vA && vB && (!vA.culled || !vB.culled)) {
+                  ctx.moveTo(vA.x, vA.y);
+                  ctx.lineTo(vB.x, vB.y);
+                }
+              }
+              ctx.stroke();
             }
-            ctx.stroke();
-
-            // 2. 3D Geometric Polyhedral Cage Vertices around cluster (Batched into single stroke!)
-            const cageVerts = [
-              { x: cInfo.cx, y: cInfo.cy - cInfo.rad * 0.7, z: cInfo.cz },
-              { x: cInfo.cx + cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz + cInfo.rad * 0.7 },
-              { x: cInfo.cx - cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz + cInfo.rad * 0.7 },
-              { x: cInfo.cx - cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz - cInfo.rad * 0.7 },
-              { x: cInfo.cx + cInfo.rad * 0.7, y: cInfo.cy, z: cInfo.cz - cInfo.rad * 0.7 },
-              { x: cInfo.cx, y: cInfo.cy + cInfo.rad * 0.7, z: cInfo.cz }
-            ].map(v => project3D(v.x, v.y, v.z));
-
-            ctx.strokeStyle = `${color}30`;
-            ctx.lineWidth = 1;
-            const cageEdges = [
-              [0,1],[0,2],[0,3],[0,4],
-              [1,2],[2,3],[3,4],[4,1],
-              [5,1],[5,2],[5,3],[5,4]
-            ];
-            ctx.beginPath();
-            cageEdges.forEach(([i, j]) => {
-              const vA = cageVerts[i];
-              const vB = cageVerts[j];
-              if (vA && vB && (!vA.culled || !vB.culled)) {
-                ctx.moveTo(vA.x, vA.y);
-                ctx.lineTo(vB.x, vB.y);
-              }
-            });
-            ctx.stroke();
 
             // 3. Intra-cluster Constellation Web (Batched into single stroke!)
             ctx.strokeStyle = `${color}55`;
@@ -1904,9 +1975,9 @@
       }
 
       // 5. Luminous Connections Web (Batching Edges by Color & Highlight)
-      const showConnections = document.getElementById('chkConnections').checked;
+      const showConnections = chkConnectionsEl ? chkConnectionsEl.checked : true;
       if (showConnections) {
-        edgeBuckets.clear();
+        edgeBuckets.forEach(b => b.length = 0);
         highEdges.length = 0;
 
         for (let i = 0; i < edges.length; i++) {
@@ -1974,7 +2045,7 @@
           const px = pkt.source.x + (pkt.target.x - pkt.source.x) * pkt.progress;
           const py = pkt.source.y + (pkt.target.y - pkt.source.y) * pkt.progress;
           const pz = pkt.source.z + (pkt.target.z - pkt.source.z) * pkt.progress;
-          const proj = project3D(px, py, pz);
+          const proj = project3D(px, py, pz, scratchProj);
           if (proj && !proj.culled) {
             ctx.fillStyle = '#ffffff';
             if (cfg.enableShadows) {
@@ -1989,8 +2060,9 @@
         }
       }
 
-      // 7. 3D Orbital Comets
-      comets3D.forEach(c => {
+      // 7. 3D Orbital Comets (Zero-allocation recycled trails)
+      for (let cIdx = 0; cIdx < comets3D.length; cIdx++) {
+        const c = comets3D[cIdx];
         c.angle += c.speed;
         const u = Math.cos(c.angle) * c.radA;
         const v = Math.sin(c.angle) * c.radB;
@@ -1998,10 +2070,20 @@
         const cy = v * Math.cos(c.tiltX);
         const cz = v * Math.sin(c.tiltX);
 
-        const proj = project3D(cx, cy, cz);
+        c._proj = project3D(cx, cy, cz, c._proj);
+        const proj = c._proj;
         if (proj) {
-          c.trail.push({ x: proj.x, y: proj.y, z: proj.z, time: now });
-          if (c.trail.length > (cfg.maxCometTail || 12)) c.trail.shift();
+          const maxTail = cfg.maxCometTail || 12;
+          if (c.trail.length < maxTail) {
+            c.trail.push({ x: proj.x, y: proj.y, z: proj.z, time: now });
+          } else {
+            const pt = c.trail.shift();
+            pt.x = proj.x;
+            pt.y = proj.y;
+            pt.z = proj.z;
+            pt.time = now;
+            c.trail.push(pt);
+          }
 
           if (!proj.culled) {
             ctx.fillStyle = '#ffffff';
@@ -2026,11 +2108,11 @@
             ctx.shadowBlur = 0;
           }
         }
-      });
+      }
 
       // 8. 3D Nodes Depth Sorting & Fast Sprite Blits
-      const attentionOnly = document.getElementById('chkAttention').checked;
-      const showLabels = document.getElementById('chkLabels').checked;
+      const attentionOnly = chkAttentionEl ? chkAttentionEl.checked : false;
+      const showLabels = chkLabelsEl ? chkLabelsEl.checked : false;
 
       // Filter visible nodes into pre-allocated reusable array (Zero Object Allocations!)
       visibleNodes.length = 0;
@@ -2042,7 +2124,7 @@
       }
 
       // Depth Sort: Draw farthest (large Z) first, nearest (small Z) last!
-      visibleNodes.sort((a, b) => b._proj.z - a._proj.z);
+      visibleNodes.sort(nodeDepthComparator);
 
       for (let i = 0; i < visibleNodes.length; i++) {
         const n = visibleNodes[i];
@@ -2052,6 +2134,7 @@
         const isSelected = (n === selectedNode || n === trackingNode);
         const hasThoughtAura = (n._thoughtAura && n._thoughtAura > 0.02);
         const r = isHovered ? nodeRadius * 1.35 : nodeRadius;
+        const isDistantNode = p.z > (cfg.lodDist || 1400);
 
         // Pulsing Activity Ripple Ring
         if (n.pulse > 0) {
@@ -2099,7 +2182,8 @@
         }
 
         // 1. Soft Outer Holographic Halo (Ultra-fast cached sprite drawImage)
-        if (cfg.useSprites && (isHovered || n.pulse > 0 || hasThoughtAura || r > 4)) {
+        // Level of Detail (LOD): Skip halo for distant, small, non-active nodes to preserve fillrate
+        if (cfg.useSprites && (isHovered || n.pulse > 0 || hasThoughtAura || (r > 4 && !isDistantNode))) {
           const haloSprite = getHaloSprite(n.color);
           const haloAlpha = (isHovered || n.pulse > 0 || hasThoughtAura) ? 1.0 : 0.65;
           ctx.globalAlpha = haloAlpha;
@@ -2133,8 +2217,9 @@
           ctx.shadowBlur = 0;
         }
 
-        // SMART LABELING: Avoid clumped text in center!
-        const shouldShowLabel = showLabels || isHovered || isSelected || (n.pulse > 0) || hasThoughtAura || (camera.dist < 460) || n._searchMatched;
+        // SMART LABELING with LOD: Avoid clumped text in center & skip distant labels unless focused
+        const isLabelLODEligible = cfg.fullLabels || isHovered || isSelected || (n.pulse > 0) || hasThoughtAura || (p.z < 900);
+        const shouldShowLabel = isLabelLODEligible && (showLabels || isHovered || isSelected || (n.pulse > 0) || hasThoughtAura || (camera.dist < 460) || n._searchMatched);
 
         if (shouldShowLabel) {
           ctx.save();
