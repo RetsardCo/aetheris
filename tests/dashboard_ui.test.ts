@@ -192,20 +192,33 @@ describe('Agent Brain 3D Dashboard & UI Verification', () => {
     expect(content).toContain('FOLLOWING NODE:');
   });
 
-  it('fixes wild spinning bug with shortest-path angular delta wrapping on camera yaw', () => {
+  it('fixes wild spinning bug with shortest-path angular delta wrapping and velocity clamping', () => {
     const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
     expect(content).toContain('deltaYaw');
     expect(content).toContain('(camera.targetYaw - camera.yaw) % (Math.PI * 2)');
     expect(content).toContain('deltaYaw > Math.PI');
     expect(content).toContain('deltaYaw < -Math.PI');
+    expect(content).toContain('maxAngularStep');
+    expect(content).toContain('camera.targetYaw = camera.yaw');
   });
 
-  it('docks Live Agent Trace terminal neatly at bottom-left side with filter controls', () => {
+  it('docks Live Agent Trace terminal neatly at bottom-left side with active filter controls and collapse toggle', () => {
     const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
     expect(content).toContain('liveAgentTraceDock');
     expect(content).toContain('traceLog');
     expect(content).toContain('trace-filter');
     expect(content).toContain('btnToggleTraceDock');
     expect(content).toContain('LIVE AGENT TRACE');
+    expect(content).toContain('activeTraceFilter');
+    expect(content).toContain('btnToggleTraceDock.addEventListener');
+  });
+
+  it('applies explicit CSS layout styles preventing panel cutoffs and ensuring clean scrolling', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    expect(content).toContain('#leftSidebar {');
+    expect(content).toContain('#liveAgentTraceDock {');
+    expect(content).toContain('#rightTraceStack {');
+    expect(content).toContain('height: calc(100vh - 124px);');
   });
 });
+

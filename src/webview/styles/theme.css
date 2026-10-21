@@ -371,10 +371,10 @@ body, html {
 .agent-trace-dock {
   position: absolute;
   bottom: 74px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 480px;
-  max-width: calc(100vw - 720px);
+  left: 310px;
+  transform: none;
+  width: 440px;
+  max-width: calc(100vw - 760px);
   max-height: 180px;
   background-color: rgba(10, 15, 24, 0.92);
   border: 1px solid var(--border-card);

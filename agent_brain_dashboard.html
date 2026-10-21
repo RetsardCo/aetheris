@@ -63,6 +63,56 @@
       overflow: hidden !important;
     }
 
+    /* Header precision height */
+    header.apple-glass {
+      height: 52px;
+    }
+
+    /* Precision Floating Overlay Panels Layout - Prevents Cutoff and Ensures Clean Scrolling */
+    #leftSidebar {
+      top: 60px;
+      bottom: 248px;
+      width: 320px;
+      max-height: calc(100vh - 316px);
+    }
+
+    #liveAgentTraceDock {
+      left: 16px;
+      bottom: 58px;
+      width: 320px;
+      height: 180px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #liveAgentTraceDock.collapsed {
+      height: 38px;
+    }
+    #liveAgentTraceDock.collapsed #traceLog {
+      display: none;
+    }
+
+    #rightTraceStack {
+      top: 60px;
+      bottom: 58px;
+      width: 420px;
+      max-width: 32vw;
+      height: calc(100vh - 124px);
+    }
+
+    #rightTraceStack #traceCardsContainer {
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 6px;
+      padding-bottom: 12px;
+    }
+
+    #cognitionDock {
+      bottom: 8px;
+      left: 16px;
+      right: 16px;
+    }
+
     /* Crisp High-Contrast HUD Glass - Zero Blurry Filters */
     .hud-glass {
       background: rgba(8, 14, 26, 0.76);
@@ -969,9 +1019,7 @@
     const btnAutoOrbit = document.getElementById('btnAutoOrbit');
     btnAutoOrbit.addEventListener('click', () => {
       autoOrbit = !autoOrbit;
-      if (autoOrbit) {
-        camera.targetYaw = camera.yaw;
-      }
+      camera.targetYaw = camera.yaw;
       document.getElementById('orbitLabel').textContent = autoOrbit ? '360° ORBIT: ON' : '360° ORBIT: OFF';
       btnAutoOrbit.className = autoOrbit 
         ? 'bg-white/5 hover:bg-white/10 text-cyan-300 border border-cyan-500/80 px-2.5 py-1 rounded mono text-[11px] transition flex items-center gap-1.5 shadow-[0_0_10px_rgba(6,182,212,0.25)]'
@@ -1002,6 +1050,7 @@
         const dx = e.clientX - lastMouseX;
         const dy = e.clientY - lastMouseY;
         camera.yaw += dx * 0.007;
+        camera.yaw = (camera.yaw % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
         camera.pitch = Math.max(-1.50, Math.min(1.50, camera.pitch - dy * 0.007));
         camera.targetYaw = camera.yaw;
         camera.targetPitch = camera.pitch;
@@ -1070,6 +1119,7 @@
         const dx = e.touches[0].clientX - lastMouseX;
         const dy = e.touches[0].clientY - lastMouseY;
         camera.yaw += dx * 0.007;
+        camera.yaw = (camera.yaw % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
         camera.pitch = Math.max(-1.50, Math.min(1.50, camera.pitch - dy * 0.007));
         camera.targetYaw = camera.yaw;
         camera.targetPitch = camera.pitch;
@@ -1407,8 +1457,16 @@
       let deltaYaw = (camera.targetYaw - camera.yaw) % (Math.PI * 2);
       if (deltaYaw > Math.PI) deltaYaw -= Math.PI * 2;
       if (deltaYaw < -Math.PI) deltaYaw += Math.PI * 2;
-      camera.yaw += deltaYaw * 0.10;
+      const maxAngularStep = 0.05; // Prevent unbounded velocity accumulation on search/focus events
+      const yawStep = Math.max(-maxAngularStep, Math.min(maxAngularStep, deltaYaw * 0.10));
+      camera.yaw += yawStep;
       camera.yaw = (camera.yaw % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+
+      // Core label fades when following a node so the focused node in center has unobstructed view
+      const coreLabelEl = document.getElementById('coreLabel');
+      if (coreLabelEl) {
+        coreLabelEl.style.opacity = trackingNode ? '0' : '0.85';
+      }
 
       // Pitch interpolation (clamped between -1.48 and 1.48 radians)
       camera.targetPitch = Math.max(-1.48, Math.min(1.48, camera.targetPitch));
@@ -2051,12 +2109,13 @@
         }
       }
 
-      const distXZ = Math.sqrt(tx * tx + tz * tz) || 1;
-      let desiredYaw = Math.atan2(tx, tz);
-      camera.targetYaw = (desiredYaw % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      camera.targetLookAtX = tx;
+      camera.targetLookAtY = ty;
+      camera.targetLookAtZ = tz;
       camera.targetPitch = 0.28;
       camera.targetPanX = 0;
       camera.targetPanY = 0;
+      camera.targetYaw = camera.yaw; // Retain current viewing angle to eliminate wild spinning bug
       playSciFiChirp('click');
     }
 
@@ -2070,7 +2129,7 @@
         }
       }
       if (mostActive) {
-        flyCameraToPoint(mostActive.x, mostActive.y, mostActive.z);
+        flyCameraToPoint(mostActive.x, mostActive.y, mostActive.z, mostActive);
         openNodeInspector(mostActive);
       }
     }
@@ -2503,7 +2562,7 @@
                   const target = pill.dataset.path;
                   const found = nodes.find(n => n.id === target || n.name === target || n.fullPath === target || target.includes(n.name));
                   if (found) {
-                    flyCameraToPoint(found.x, found.y, found.z);
+                    flyCameraToPoint(found.x, found.y, found.z, found);
                     openNodeInspector(found);
                     found._thoughtAura = 1.0;
                     found.pulse = Math.PI * 2;
@@ -2536,12 +2595,30 @@
         .replace(/\b(\d+)\b/g, '<span class="syn-num">$1</span>');
     }
 
-    function logTrace(htmlText) {
+    let activeTraceFilter = 'all';
+
+    function logTrace(htmlText, type = 'all', filePath = null) {
       if (!traceLog) return;
       const line = document.createElement('div');
       line.className = 'trace-entry';
+      line.dataset.type = type;
       line.innerHTML = htmlText;
+      if (filePath) {
+        line.style.cursor = 'pointer';
+        line.title = `Click to focus ${filePath} in 3D`;
+        line.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const found = nodes.find(n => n.id === filePath || n.name === filePath || n.fullPath === filePath || filePath.endsWith(n.name));
+          if (found) {
+            flyCameraToPoint(found.x, found.y, found.z, found);
+            openNodeInspector(found);
+          }
+        });
+      }
       traceLog.appendChild(line);
+      if (activeTraceFilter !== 'all' && type !== activeTraceFilter) {
+        line.style.display = 'none';
+      }
       traceLog.scrollTop = traceLog.scrollHeight;
     }
 
@@ -2582,7 +2659,7 @@
       card.addEventListener('click', () => {
         const found = nodes.find(n => n.id === event.filePath || n.name === event.filePath || n.fullPath === event.filePath);
         if (found) {
-          flyCameraToPoint(found.x, found.y, found.z);
+          flyCameraToPoint(found.x, found.y, found.z, found);
           openNodeInspector(found);
         }
       });
@@ -2606,7 +2683,7 @@
           actItem.addEventListener('click', () => {
             const found = nodes.find(n => n.id === event.filePath || n.name === event.filePath);
             if (found) {
-              flyCameraToPoint(found.x, found.y, found.z);
+              flyCameraToPoint(found.x, found.y, found.z, found);
               openNodeInspector(found);
             }
           });
@@ -2845,7 +2922,7 @@
             else if (data.activityType === 'file_create') { colorTag = 'text-emerald-400 font-bold'; actPrefix = 'CREATE'; }
             else if (data.activityType === 'terminal_command') { colorTag = 'text-purple-400 font-bold'; actPrefix = 'EXEC'; }
 
-            logTrace(`<span class="${colorTag}">[${actPrefix}]</span> <span class="text-slate-100">${data.summary || data.toolName}</span>`);
+            logTrace(`<span class="${colorTag}">[${actPrefix}]</span> <span class="text-slate-100">${data.summary || data.toolName}</span>`, actPrefix.toLowerCase(), data.filePath);
             addTraceCard(data);
             playSciFiChirp(data.activityType === 'file_write' ? 'write' : 'read');
 
@@ -2857,7 +2934,7 @@
         eventSource.addEventListener('user', (e) => {
           try {
             const data = JSON.parse(e.data);
-            logTrace(`<span class="text-emerald-400 font-bold">[USER]</span> <span class="text-slate-100">"${data.text}"</span>`);
+            logTrace(`<span class="text-emerald-400 font-bold">[USER]</span> <span class="text-slate-100">"${data.text}"</span>`, 'user');
           } catch (err) {}
         });
 
@@ -2961,6 +3038,38 @@
         setTimeout(resize, 40);
       });
     }
+
+    // Live Agent Trace Terminal Dock Controls (Toggle & Filter)
+    const btnToggleTraceDock = document.getElementById('btnToggleTraceDock');
+    if (btnToggleTraceDock && liveAgentTraceDock) {
+      btnToggleTraceDock.addEventListener('click', () => {
+        const isCollapsed = liveAgentTraceDock.classList.toggle('collapsed');
+        btnToggleTraceDock.textContent = isCollapsed ? '▲' : '▼';
+        playSciFiChirp('click');
+      });
+    }
+
+    document.querySelectorAll('.trace-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeTraceFilter = btn.dataset.filter || 'all';
+        document.querySelectorAll('.trace-filter').forEach(b => {
+          b.className = 'trace-filter px-1.5 py-0.5 rounded hover:bg-white/10 text-slate-400';
+        });
+        btn.className = 'trace-filter px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-semibold';
+        if (traceLog) {
+          const entries = traceLog.querySelectorAll('.trace-entry');
+          entries.forEach(entry => {
+            const type = entry.dataset.type || 'all';
+            if (activeTraceFilter === 'all' || type === activeTraceFilter) {
+              entry.style.display = '';
+            } else {
+              entry.style.display = 'none';
+            }
+          });
+        }
+        playSciFiChirp('click');
+      });
+    });
 
     // Search & Spotlight in 3D
     const searchInput = document.getElementById('searchInput');
