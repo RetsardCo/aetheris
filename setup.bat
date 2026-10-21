@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 echo ======================================================
-echo    AI Activity Visualizer - Automated Setup (Windows)
+echo    Aetheris - Automated Setup (Windows)
 echo ======================================================
 
 :: 1. Verify Node.js existence

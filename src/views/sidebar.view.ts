@@ -94,7 +94,7 @@ export class ControlSidebarViewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agent Brain Sidebar</title>
+  <title>Aetheris Sidebar</title>
   <style>
     body {
       background-color: var(--vscode-sideBar-background, #080b11);
@@ -166,11 +166,19 @@ export class ControlSidebarViewProvider implements vscode.WebviewViewProvider {
   </style>
 </head>
 <body>
+  <div style="display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+    <svg width="28" height="28" viewBox="0 0 512 512" style="border-radius: 6px; flex-shrink: 0;"><defs><linearGradient id="sb-a" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#74f7e8"/><stop offset=".52" stop-color="#50bdf6"/><stop offset="1" stop-color="#a78bfa"/></linearGradient><radialGradient id="sb-c" cx=".3" cy=".2" r=".8"><stop stop-color="#f4ffff"/><stop offset=".25" stop-color="#74f7e8"/><stop offset=".7" stop-color="#50bdf6"/><stop offset="1" stop-color="#8069e9"/></radialGradient><filter id="sb-g" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="512" height="512" rx="112" fill="#0b1020"/><g transform="translate(256 256)" fill="none" stroke="url(#sb-a)" stroke-linecap="round"><circle r="154" stroke-width="3" opacity=".26"/><ellipse rx="164" ry="75" transform="rotate(-38)" stroke-width="4"/><ellipse rx="164" ry="75" transform="rotate(48)" stroke-width="3" opacity=".72"/><path d="M-134 72 L-51 7 L-6 -64 L59 -43 L117 -116 M-109 -88 L-51 7 L27 78 L103 60 L143 3 M-51 7 L59 -43 L103 60 M27 78 L59 -43" stroke-width="2.5" opacity=".72"/><path d="M0 -185 V-145 M-185 0 H-145 M145 0 H185 M0 145 V185" stroke-width="2" opacity=".4"/></g><g filter="url(#sb-g)"><circle cx="122" cy="176" r="9" fill="#7df7e8"/><circle cx="205" cy="264" r="8" fill="#65e4ed"/><circle cx="315" cy="217" r="9" fill="#80ddff"/><circle cx="355" cy="319" r="7" fill="#a78bfa"/><circle cx="202" cy="342" r="6" fill="#6ad9f5"/><circle cx="319" cy="378" r="7" fill="#8c8bff"/><circle cx="373" cy="165" r="6" fill="#7df7e8"/></g><path d="M256 199 L301 225 L301 277 L256 303 L211 277 L211 225 Z" fill="#182f4b" stroke="url(#sb-a)" stroke-width="4"/><path d="M256 215 L286 232 L286 270 L256 287 L226 270 L226 232 Z" fill="url(#sb-c)" filter="url(#sb-g)"/><path d="M241 239 L256 230 L271 239 L271 257 L256 266 L241 257 Z" fill="#efffff"/></svg>
+    <div>
+      <div style="font-weight: 700; font-size: 13px; letter-spacing: 0.5px; color: #f8fafc;">AETHERIS</div>
+      <div style="font-size: 10px; color: #64748b;">3D Cognitive Observatory</div>
+    </div>
+  </div>
+
   <div>
     <div class="section-title">SERVER</div>
     <div class="status-text">
       <span class="status-dot"></span>
-      Agent Brain: <strong>${statusText}</strong>
+      Aetheris: <strong>${statusText}</strong>
     </div>
     <div class="url-box">${url}</div>
     <div class="btn-row" style="margin-bottom: 6px;">

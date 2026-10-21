@@ -1,4 +1,4 @@
-# AI Activity Visualizer - Task Checklist (TODO.md)
+# Aetheris - Task Checklist (TODO.md)
 
 - [x] **1. Scaffolding & Setup**
   - [x] Initialize `package.json` with required scripts and VS Code extension contribution points

@@ -1,11 +1,11 @@
-# Automated Setup script for AI Activity Visualizer (PowerShell)
+# Automated Setup script for Aetheris (PowerShell)
 # Run with: powershell -ExecutionPolicy Bypass -File setup.ps1
 
 $ErrorActionPreference = "Stop"
 Set-Location -LiteralPath $PSScriptRoot
 
 Write-Host "======================================================" -ForegroundColor Cyan
-Write-Host "   AI Activity Visualizer - Automated Setup (PowerShell)" -ForegroundColor Cyan
+Write-Host "   Aetheris - Automated Setup (PowerShell)" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 
 # 1. Verify Node.js existence

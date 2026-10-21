@@ -1,5 +1,5 @@
 // scripts/setup.mjs
-// Cross-platform setup script for AI Activity Visualizer
+// Cross-platform setup script for Aetheris
 
 import { execSync } from 'child_process';
 import * as fs from 'fs';
@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 console.log('======================================================');
-console.log('   AI Activity Visualizer - Automated Setup');
+console.log('   Aetheris - Automated Setup');
 console.log('======================================================');
 
 // 1. Verify Node.js version >= 18

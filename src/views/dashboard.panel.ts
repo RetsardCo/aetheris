@@ -30,7 +30,7 @@ export class DashboardPanel {
 
     const panel = vscode.window.createWebviewPanel(
       DashboardPanel.viewType,
-      'Agent Brain',
+      'Aetheris',
       column || vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -112,7 +112,7 @@ export class DashboardPanel {
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource}; connect-src http://127.0.0.1:* ws://127.0.0.1:*;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agent Brain</title>
+  <title>Aetheris</title>
   <link rel="stylesheet" href="${styleUri}">
 </head>
 <body>

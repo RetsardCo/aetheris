@@ -1,22 +1,22 @@
-# Aetheris — AI Activity Visualizer for Visual Studio Code
+# Aetheris - 3D Cognitive Observatory for Autonomous AI Agents
 
 <p align="center">
-  <img src="assets/branding/aetheris-logo.svg" alt="Aetheris logo — AI Activity Observatory" width="820">
+  <img src="media/logo.svg" width="160" alt="Aetheris Logo" />
 </p>
 
-[![Visual Studio Marketplace](https://img.shields.io/badge/VS%20Code-AI%20Activity%20Visualizer-blue.svg)](https://marketplace.visualstudio.com)
+[![Visual Studio Marketplace](https://img.shields.io/badge/VS%20Code-Aetheris-blue.svg)](https://marketplace.visualstudio.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](https://opensource.org/licenses/MIT)
 [![Tests: Passing](https://img.shields.io/badge/Tests-Passing-emerald.svg)](#building-and-testing)
 
-A real-time developer observability suite and 3D neural observatory for monitoring, normalizing, storing, and visualizing AI coding agent activity (Google Antigravity, GitHub Copilot, and Visual Studio Code workspace edits) as an interactive spherical constellation mesh.
+A real-time developer observability suite and 3D cognitive observatory for monitoring, normalizing, storing, and visualizing AI coding agent activity (Google Antigravity, GitHub Copilot, and Visual Studio Code workspace edits) as an interactive spherical constellation mesh.
 
 ---
 
 ## Architecture and Overview
 
-AI Activity Visualizer provides comprehensive runtime visibility into autonomous AI agent actions. When agents read documentation, inspect codebase graphs, issue terminal executions, or edit source files, every event is ingested through low-latency telemetry adapters, sanitized for privacy, persisted in an embedded SQLite database, and projected across a high-performance 60 FPS Canvas 2D engine.
+Aetheris provides comprehensive runtime visibility into autonomous AI agent actions. When agents read documentation, inspect codebase graphs, issue terminal executions, or edit source files, every event is ingested through low-latency telemetry adapters, sanitized for privacy, persisted in an embedded SQLite database, and projected across a high-performance 60 FPS Canvas 2D engine.
 
-### 3D Neural Observatory (Aetheris Engine)
+### 3D Cognitive Observatory (Aetheris Engine)
 
 1. Full Viewport Background Observable Space:
    - The 3D constellation engine renders across the entire viewport background, allowing unrestricted zooming and 360-degree orbital exploration.
@@ -114,7 +114,7 @@ Start the live bridge server and automatically open the interactive 3D observato
 If installed into Visual Studio Code:
 1. Open Visual Studio Code in any workspace.
 2. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
-3. Execute `Agent Brain: Open Activity Dashboard`.
+3. Execute `Aetheris: Open 3D Observatory`.
 
 ---
 
@@ -122,12 +122,14 @@ If installed into Visual Studio Code:
 
 Access via the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 
-- `Agent Brain: Open Activity Dashboard` - Opens the primary 3D neural visualizer.
-- `Agent Brain: Start Recording` - Resumes background telemetry capture.
-- `Agent Brain: Stop Recording` - Pauses background telemetry capture.
-- `Agent Brain: Clear Current Session` - Resets stored events for the active session.
-- `Agent Brain: Export Current Session` - Exports session telemetry as sanitized JSON.
-- `Agent Brain: Show Diagnostics & Logs` - Opens the diagnostic output channel.
+- `Aetheris: Open 3D Observatory` - Opens the primary 3D cognitive observatory.
+- `Aetheris: Start Recording` - Resumes background telemetry capture.
+- `Aetheris: Stop Recording` - Pauses background telemetry capture.
+- `Aetheris: Pause Recording` - Pauses background telemetry capture.
+- `Aetheris: Resume Recording` - Resumes background telemetry capture.
+- `Aetheris: Clear Current Session` - Resets stored events for the active session.
+- `Aetheris: Export Current Session` - Exports session telemetry as sanitized JSON.
+- `Aetheris: Show Diagnostics & Logs` - Opens the diagnostic output channel.
 
 ---
 
@@ -147,7 +149,7 @@ The extension can be customized through Visual Studio Code settings under `aiAct
 
 ---
 
-## Manual Building and Testing
+## Building and Testing
 
 Prerequisites: Node.js (version 18 or higher) and npm.
 
@@ -177,7 +179,7 @@ npm start
 
 The extension is structured to ensure zero-friction transfer across different machines:
 - **No Native Addons:** Database persistence is powered by `sql.js` (SQLite compiled to WebAssembly), avoiding prebuilt C++ binaries or architecture-specific compilation errors on ARM64 / x64.
-- **Pure Web Standards:** The 3D neural observatory runs entirely on HTML5 Canvas 2D with a lightweight 3D orbital projection engine, requiring no WebGL hardware extensions or proprietary drivers.
+- **Pure Web Standards:** The 3D cognitive observatory runs entirely on HTML5 Canvas 2D with a lightweight 3D orbital projection engine, requiring no WebGL hardware extensions or proprietary drivers.
 - **Self-Contained Bridge:** `live_bridge_server.mjs` operates using standard Node.js built-ins (`http`, `fs`, `path`, `os`), running out-of-the-box on Windows, Linux, and macOS.
 
 ---

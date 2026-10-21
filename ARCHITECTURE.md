@@ -1,8 +1,8 @@
-# Architecture: AI Activity Visualizer
+# Architecture: Aetheris
 
 ## 1. System Overview
 
-AI Activity Visualizer operates on a strict **local-first, privacy-by-design** architecture. It captures event streams from AI agents and the VS Code editor, normalizes them through a deterministic validation pipeline, indexes them in an embedded SQLite database, and streams updates bi-directionally to a React Canvas 2D Webview dashboard.
+Aetheris operates on a strict **local-first, privacy-by-design** architecture. It captures event streams from AI agents and the VS Code editor, normalizes them through a deterministic validation pipeline, indexes them in an embedded SQLite database, and streams updates bi-directionally to a React Canvas 2D Webview dashboard.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐

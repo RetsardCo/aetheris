@@ -1,8 +1,8 @@
-# AI Activity Visualizer - Implementation Plan
+# Aetheris - Implementation Plan
 
 ## 1. Executive Summary & Objective
 
-The objective is to build a production-grade, installable VS Code extension named **AI Activity Visualizer** that accurately captures, normalizes, stores, and visualizes developer and AI coding agent activities in real-time.
+The objective is to build a production-grade, installable VS Code extension named **Aetheris** that accurately captures, normalizes, stores, and visualizes developer and AI coding agent activities in real-time.
 
 The UI is modeled directly on the **Agent Brain** visual reference (`media_1792485704082_84a33ff8.png`), featuring:
 - A compact, dark VS Code-inspired theme (`#070a10` / `#0d131f`) with teal, cyan, amber, and violet accents.
@@ -10,7 +10,7 @@ The UI is modeled directly on the **Agent Brain** visual reference (`media_17924
 - Left repository panel ("Your repo, thinking out loud.", folder activity hierarchy, metrics badges, attention filter).
 - Floating agent trace cards on the right (macOS dots `•••`, code snippets, terminal commands).
 - Full 4-in-1 dashboard: Live Overview, Interactive Graph, Chronological Timeline, Session Replay.
-- Dedicated VS Code Sidebar view ("AGENT BRAIN" / "AI Activity Visualizer") with server controls, recording toggles, diagnostics, and webview launcher.
+- Dedicated VS Code Sidebar view ("Aetheris") with server controls, recording toggles, diagnostics, and webview launcher.
 
 ---
 

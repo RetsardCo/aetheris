@@ -1,13 +1,13 @@
 {
   "name": "ai-activity-visualizer",
-  "displayName": "AI Activity Visualizer",
-  "description": "Visualizes live and historical AI coding agent activity (Copilot, Antigravity, workspace) with glowing constellation graph and real-time agent traces.",
+  "displayName": "Aetheris",
+  "description": "Aetheris - 3D Cognitive Observatory for Autonomous AI Agents",
   "version": "1.0.0",
   "publisher": "kurados",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/RetsardCo/ai-activity-visualizer"
+    "url": "https://github.com/RetsardCo/aetheris"
   },
   "engines": {
     "vscode": "^1.90.0"
@@ -26,7 +26,7 @@
       "activitybar": [
         {
           "id": "ai-activity-visualizer",
-          "title": "Agent Brain",
+          "title": "Aetheris",
           "icon": "media/icon.svg"
         }
       ]
@@ -43,67 +43,67 @@
     "commands": [
       {
         "command": "aiActivityVisualizer.openDashboard",
-        "title": "Agent Brain: Open Activity Dashboard",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Open 3D Observatory",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.startRecording",
-        "title": "Agent Brain: Start Recording",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Start Recording",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.stopRecording",
-        "title": "Agent Brain: Stop Recording",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Stop Recording",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.pauseRecording",
-        "title": "Agent Brain: Pause Recording",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Pause Recording",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.resumeRecording",
-        "title": "Agent Brain: Resume Recording",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Resume Recording",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.clearSession",
-        "title": "Agent Brain: Clear Current Session",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Clear Current Session",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.exportSession",
-        "title": "Agent Brain: Export Current Session",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Export Current Session",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.configureCopilot",
-        "title": "Agent Brain: Configure Copilot Integration",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Configure Copilot Integration",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.configureAntigravity",
-        "title": "Agent Brain: Configure Antigravity Integration",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Configure Antigravity Integration",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.validateIntegrations",
-        "title": "Agent Brain: Validate Integrations",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Validate Integrations",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.openPrivacySettings",
-        "title": "Agent Brain: Open Privacy Settings",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Open Privacy Settings",
+        "category": "Aetheris"
       },
       {
         "command": "aiActivityVisualizer.showDiagnostics",
-        "title": "Agent Brain: Show Diagnostics & Logs",
-        "category": "AI Activity Visualizer"
+        "title": "Aetheris: Show Diagnostics & Logs",
+        "category": "Aetheris"
       }
     ],
     "configuration": {
-      "title": "AI Activity Visualizer",
+      "title": "Aetheris",
       "properties": {
         "aiActivityVisualizer.recordingEnabled": {
           "type": "boolean",
@@ -172,7 +172,7 @@
     "build": "node esbuild.config.mjs && node esbuild.webview.mjs",
     "watch": "node esbuild.config.mjs --watch",
     "test": "vitest run",
-    "package": "vsce package --no-dependencies",
+    "package": "vsce package --no-dependencies --no-rewrite-relative-links",
     "setup": "node ./scripts/setup.mjs",
     "start": "node live_bridge_server.mjs --open"
   },

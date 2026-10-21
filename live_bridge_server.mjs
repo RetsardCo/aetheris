@@ -1,5 +1,5 @@
 // live_bridge_server.mjs
-// Real-time backend bridge for Antigravity AI Activity Visualizer (Agent Brain)
+// Real-time backend bridge for Aetheris (3D Cognitive Observatory)
 // Tails live transcripts from Antigravity, extracts AI reasoning and file operations,
 // and streams live telemetry to both the Antigravity dashboard artifact and the browser.
 
@@ -1012,7 +1012,7 @@ function tryListen(portIndex) {
     server.removeListener('error', onError);
     activePort = port;
     console.log(`\n======================================================`);
-    console.log(`🚀 AGENT BRAIN LIVE BRIDGE ACTIVE`);
+    console.log(`🚀 AETHERIS LIVE BRIDGE ACTIVE`);
     console.log(`📡 Loopback Server: http://${HOST}:${activePort}/`);
     console.log(`⚡ Live SSE Stream: http://${HOST}:${activePort}/api/stream`);
     console.log(`📊 State Snapshot: http://${HOST}:${activePort}/api/state`);

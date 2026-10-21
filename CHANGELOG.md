@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the **AI Activity Visualizer** extension will be documented in this file.
+All notable changes to the **Aetheris** extension will be documented in this file.
 
 ## [1.1.0] - 2026-10-21
 

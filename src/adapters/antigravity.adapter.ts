@@ -220,7 +220,7 @@ export class AntigravityHookAdapter implements AgentAdapter {
 
   public generateHookScript(authToken = 'YOUR_PER_SESSION_TOKEN', port = 5174): string {
     return `#!/usr/bin/env node
-// AI Activity Visualizer - Antigravity Hook Bridge
+// Aetheris - Antigravity Hook Bridge
 const http = require('http');
 
 function forwardHook(event) {

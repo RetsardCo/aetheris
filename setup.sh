@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")"
 
 echo "======================================================"
-echo "   AI Activity Visualizer - Automated Setup (UNIX)"
+echo "   Aetheris - Automated Setup (UNIX)"
 echo "======================================================"
 
 # 1. Check Node.js

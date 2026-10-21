@@ -1,6 +1,6 @@
 # Agent Integrations Guide
 
-This document specifies the supported agent contracts, telemetry surfaces, and integration procedures for **AI Activity Visualizer**.
+This document specifies the supported agent contracts, telemetry surfaces, and integration procedures for **Aetheris**.
 
 ---
 

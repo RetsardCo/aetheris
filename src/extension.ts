@@ -52,8 +52,8 @@ let currentStats: WorkspaceStats = {
 let outputChannel: vscode.OutputChannel | null = null;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  outputChannel = vscode.window.createOutputChannel('Agent Brain');
-  outputChannel.appendLine('[Agent Brain] Initializing AI Activity Visualizer...');
+  outputChannel = vscode.window.createOutputChannel('Aetheris');
+  outputChannel.appendLine('[Aetheris] Initializing Aetheris 3D Cognitive Observatory...');
 
   const config = vscode.workspace.getConfiguration('aiActivityVisualizer');
   isRecording = config.get<boolean>('recordingEnabled', true);
@@ -86,7 +86,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Prune expired sessions
   const pruned = repo.pruneRetention(retentionDays);
   if (pruned > 0) {
-    outputChannel.appendLine(`[Agent Brain] Pruned ${pruned} sessions exceeding ${retentionDays} days retention.`);
+    outputChannel.appendLine(`[Aetheris] Pruned ${pruned} sessions exceeding ${retentionDays} days retention.`);
   }
 
   // Create or load active session
@@ -129,7 +129,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   await antigravityAdapter.initialize(handleRawEvent);
   await httpAdapter.initialize(handleRawEvent);
 
-  outputChannel.appendLine(`[Agent Brain] Loopback HTTP receiver listening on ${httpAdapter.getUrl()}`);
+  outputChannel.appendLine(`[Aetheris] Loopback HTTP receiver listening on ${httpAdapter.getUrl()}`);
 
   let sidebarProvider: ControlSidebarViewProvider;
   sidebarProvider = new ControlSidebarViewProvider(
@@ -157,22 +157,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('aiActivityVisualizer.startRecording', () => {
       setRecording(true);
       sidebarProvider.setRecording(true);
-      vscode.window.showInformationMessage('Agent Brain: Activity recording started.');
+      vscode.window.showInformationMessage('Aetheris: Activity recording started.');
     }),
     vscode.commands.registerCommand('aiActivityVisualizer.stopRecording', () => {
       setRecording(false);
       sidebarProvider.setRecording(false);
-      vscode.window.showInformationMessage('Agent Brain: Activity recording paused.');
+      vscode.window.showInformationMessage('Aetheris: Activity recording paused.');
     }),
     vscode.commands.registerCommand('aiActivityVisualizer.pauseRecording', () => {
       setRecording(false);
       sidebarProvider.setRecording(false);
-      vscode.window.showInformationMessage('Agent Brain: Activity recording paused.');
+      vscode.window.showInformationMessage('Aetheris: Activity recording paused.');
     }),
     vscode.commands.registerCommand('aiActivityVisualizer.resumeRecording', () => {
       setRecording(true);
       sidebarProvider.setRecording(true);
-      vscode.window.showInformationMessage('Agent Brain: Activity recording resumed.');
+      vscode.window.showInformationMessage('Aetheris: Activity recording resumed.');
     }),
     vscode.commands.registerCommand('aiActivityVisualizer.clearSession', () => {
       if (!currentSession || !repo) return;
@@ -183,7 +183,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       repo.saveSession(currentSession);
       refreshGraph(workspaceRoot, excludedPatterns);
       broadcastInitialState();
-      vscode.window.showInformationMessage('Agent Brain: Current session events cleared.');
+      vscode.window.showInformationMessage('Aetheris: Current session events cleared.');
     }),
     vscode.commands.registerCommand('aiActivityVisualizer.exportSession', async () => {
       if (!currentSession || !repo) return;
@@ -212,7 +212,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
-  outputChannel.appendLine('[Agent Brain] Extension activated successfully.');
+  outputChannel.appendLine('[Aetheris] Extension activated successfully.');
 }
 
 function refreshGraph(workspaceRoot: string, excludedPatterns: string[]): void {
@@ -415,7 +415,7 @@ function handleWebviewMessage(msg: WebviewToExtensionMessage, context: vscode.Ex
 async function validateIntegrations(): Promise<void> {
   if (!outputChannel) return;
   outputChannel.show(true);
-  outputChannel.appendLine('[Agent Brain] --- Validating Agent Integrations ---');
+  outputChannel.appendLine('[Aetheris] --- Validating Agent Integrations ---');
 
   const vsHealth = vscodeAdapter?.getHealth();
   const coHealth = copilotAdapter?.getHealth();
@@ -432,7 +432,7 @@ async function validateIntegrations(): Promise<void> {
   ).length;
 
   vscode.window.showInformationMessage(
-    `Agent Brain: ${activeCount}/4 integrations active. See 'Agent Brain' Output Channel for full report.`
+    `Aetheris: ${activeCount}/4 integrations active. See 'Aetheris' Output Channel for full report.`
   );
 }
 
@@ -504,7 +504,7 @@ async function configureAntigravity(): Promise<void> {
 async function openPrivacySettings(context: vscode.ExtensionContext): Promise<void> {
   const choice = await vscode.window.showQuickPick(
     ['Open Visualizer Configuration Settings', 'View Privacy Documentation (PRIVACY.md)', 'Show Retention Summary'],
-    { placeHolder: 'AI Activity Visualizer · Privacy Controls' }
+    { placeHolder: 'Aetheris · Privacy Controls' }
   );
 
   if (choice === 'Open Visualizer Configuration Settings') {

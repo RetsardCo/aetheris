@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")"
 
 echo "======================================================"
-echo "   Starting AI Activity Visualizer Live Bridge Server"
+echo "   Starting Aetheris Live Bridge Server"
 echo "======================================================"
 echo "Launching live bridge server and opening dashboard in default browser..."
 

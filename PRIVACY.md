@@ -1,6 +1,6 @@
 # Privacy & Security Specification
 
-Privacy is a fundamental release requirement for **AI Activity Visualizer**.
+Privacy is a fundamental release requirement for **Aetheris**.
 
 ## 1. Local-Only Storage
 - All session records, activity events, and dependency graphs are stored locally on the user's machine in an embedded SQLite file (`activity_store.db`).
