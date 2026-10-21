@@ -560,17 +560,43 @@ describe('Aetheris 3D Dashboard & UI Verification', () => {
     expect(content).toContain('telemetryEngine');
     expect(content).toContain('WEBGL2 HARDWARE');
 
-    // Continuous Float32Array typed arrays
+    // Continuous Float32Array typed arrays with dynamic capacity expansion
     expect(content).toContain('nodePositions3D = new Float32Array');
     expect(content).toContain('nodeVelocities3D = new Float32Array');
     expect(content).toContain('nodeTargets3D = new Float32Array');
     expect(content).toContain('nodeProjections2D = new Float32Array');
     expect(content).toContain('nodeColorsRGBA = new Float32Array');
+    expect(content).toContain('ensureTypedNodeCapacity');
+
+    // Dynamic WebGL line & point buffer growth
+    expect(content).toContain('ensureLineBufferCapacity');
+    expect(content).toContain('ensurePointBufferCapacity');
+
+    // WebGL uniform and attribute location caching
+    expect(content).toContain('glLineProg._uniforms =');
+    expect(content).toContain('glPointProg._uniforms =');
+
+    // Mathematically correct 4D homogeneous perspective clip coordinates and near plane clipping
+    expect(content).toContain('if (camZ < 20.0)');
+    expect(content).toContain('float x_clip =');
+    expect(content).toContain('float y_clip =');
+    expect(content).toContain('float z_clip =');
+    expect(content).toContain('float w_clip = camZ');
+
+    // Shockwave Big Bang button physics velocity sync
+    expect(content).toContain('nodeVelocities3D[i3] = n.vx');
+    expect(content).toContain('nodeVelocities3D[i3 + 1] = n.vy');
+    expect(content).toContain('nodeVelocities3D[i3 + 2] = n.vz');
+
+    // Smooth UI quality modes including canvas2d fallback preset
+    expect(content).toContain('canvas2d:');
+    expect(content).toContain('useWebGL: false');
 
     // Batched SSE Telemetry & DOM Processing
     expect(content).toContain('telemetryQueue');
     expect(content).toContain('scheduleTelemetryFlush');
     expect(content).toContain('flushTelemetryQueue');
+    expect(content).toContain('skipScroll');
   });
 });
 
