@@ -614,6 +614,28 @@ describe('Aetheris 3D Dashboard & UI Verification', () => {
       }).not.toThrow();
     });
   });
+
+  it('eliminates amateur emojis from buttons and status indicators in favor of professional SVG icons', () => {
+    const content = fs.readFileSync(scratchHtmlPath, 'utf-8');
+    // Verify emoji removal from camera presets, audio toggle, and radar
+    expect(content).not.toContain('🎥 PRESETS');
+    expect(content).not.toContain('📐 Isometric 3D');
+    expect(content).not.toContain('🔭 Top-Down Plane');
+    expect(content).not.toContain('⚡ Side Profile');
+    expect(content).not.toContain('🎯 Focus Active');
+    expect(content).not.toContain('🔄 Reset Default');
+    expect(content).not.toContain('<span id="audioIcon">🔊</span>');
+    expect(content).not.toContain('<span>🎯</span> Highlight in 3D');
+    expect(content).not.toContain('<span>⚡</span> Blast Radius');
+    expect(content).not.toContain('RADAR: ⚠ COLLISION');
+    expect(content).not.toContain('🟢 LIVE BRIDGE LINKED');
+
+    // Verify presence of professional vector SVGs
+    expect(content).toContain('SVG_AUDIO_ON');
+    expect(content).toContain('SVG_AUDIO_OFF');
+    expect(content).toContain('RADAR: CONFLICT DETECTED');
+    expect(content).toContain('LIVE BRIDGE LINKED · PORT');
+  });
 });
 
 
