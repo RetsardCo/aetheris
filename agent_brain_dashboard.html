@@ -2386,7 +2386,22 @@ void main() {
         if (glCanvas) glCanvas.style.display = 'none';
         renderCanvas2DFallback(now, cfg);
       }
+
+      // Adaptive Dynamic Framerate Budgeting
+      const frameDuration = performance.now() - frameStart;
+      smoothedFrameDuration = (smoothedFrameDuration * 0.85) + (frameDuration * 0.15);
+      if (smoothedFrameDuration > 15.5) {
+        cfg.adaptiveLOD = true;
+        cfg.edgeLOD = true;
+      } else if (smoothedFrameDuration < 10.0) {
+        cfg.adaptiveLOD = false;
+      }
+    } catch (err) {
+      console.error('Aetheris render exception:', err);
+    } finally {
+      requestAnimationFrame(render);
     }
+  }
 
     // Hardware Accelerated WebGL GPU Pipeline (Fewer than 5 GPU draw calls!)
     function renderWebGLHardware(now, cfg) {
@@ -3366,21 +3381,6 @@ void main() {
       }
     }
 
-        // Adaptive Dynamic Framerate Budgeting
-        const frameDuration = performance.now() - frameStart;
-        smoothedFrameDuration = (smoothedFrameDuration * 0.85) + (frameDuration * 0.15);
-        if (smoothedFrameDuration > 15.5) {
-          cfg.adaptiveLOD = true;
-          cfg.edgeLOD = true;
-        } else if (smoothedFrameDuration < 10.0) {
-          cfg.adaptiveLOD = false;
-        }
-      } catch (err) {
-        console.error('Aetheris render exception:', err);
-      } finally {
-        requestAnimationFrame(render);
-      }
-    }
     requestAnimationFrame(render);
 
     // =========================================================================

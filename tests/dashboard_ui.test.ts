@@ -598,6 +598,22 @@ describe('Aetheris 3D Dashboard & UI Verification', () => {
     expect(content).toContain('flushTelemetryQueue');
     expect(content).toContain('skipScroll');
   });
+
+  it('contains syntactically valid JavaScript across all script tags without parse errors', () => {
+    const htmlPath = path.resolve(__dirname, '..', 'agent_brain_dashboard.html');
+    const content = fs.readFileSync(htmlPath, 'utf8');
+    const scriptMatches = [...content.matchAll(/<script(?:\s+[^>]*)?>([\s\S]*?)<\/script>/gi)];
+    expect(scriptMatches.length).toBeGreaterThan(0);
+
+    const vm = require('vm');
+    scriptMatches.forEach((m, idx) => {
+      const code = m[1].trim();
+      if (!code) return;
+      expect(() => {
+        new vm.Script(code, { filename: `dashboard_script_${idx + 1}.js` });
+      }).not.toThrow();
+    });
+  });
 });
 
 
