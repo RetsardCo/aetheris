@@ -1482,8 +1482,12 @@
       // Translate along camera viewing axis
       const camZ = z2 + camera.dist;
       if (camZ <= 20) {
-        if (out) { out.culled = true; out.z = -1; }
-        return null; // Near clipping plane
+        if (out) {
+          out.culled = true;
+          out.z = -1;
+          return out;
+        }
+        return { x: -9999, y: -9999, z: -1, scale: 0, depthFactor: 0.1, culled: true };
       }
 
       // Perspective scale division
@@ -2260,6 +2264,52 @@ void main() {
     document.getElementById('btnPerfPerformance')?.addEventListener('click', () => setQualityMode('turbo'));
     setQualityMode(currentQuality);
 
+    // Live Dynamic Centroid Tracking & 3D Projection for Cluster Chunks
+    function updateClusterCentroids() {
+      clusterGroups.forEach(grp => grp.length = 0);
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        let grp = clusterGroups.get(n.cluster);
+        if (!grp) {
+          grp = [];
+          clusterGroups.set(n.cluster, grp);
+        }
+        grp.push(n);
+      }
+
+      clusterGroups.forEach((cNodes, cName) => {
+        if (cNodes.length >= 1) {
+          let cInfo = clusterCentroids[cName];
+          if (!cInfo) {
+            cInfo = { cx: 0, cy: 0, cz: 0, rad: 150, name: cName.toUpperCase() };
+            clusterCentroids[cName] = cInfo;
+          }
+          let sumX = 0, sumY = 0, sumZ = 0;
+          for (let j = 0; j < cNodes.length; j++) {
+            sumX += cNodes[j].x;
+            sumY += cNodes[j].y;
+            sumZ += cNodes[j].z;
+          }
+          cInfo.cx = sumX / cNodes.length;
+          cInfo.cy = sumY / cNodes.length;
+          cInfo.cz = sumZ / cNodes.length;
+
+          let maxDist = 60;
+          for (let j = 0; j < cNodes.length; j++) {
+            const dx = cNodes[j].x - cInfo.cx;
+            const dy = cNodes[j].y - cInfo.cy;
+            const dz = cNodes[j].z - cInfo.cz;
+            const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (d > maxDist) maxDist = d;
+          }
+          cInfo.rad = Math.max(80, Math.min(260, maxDist + 35));
+
+          // Project dynamically every frame relative to current camera target and angles!
+          cInfo._proj = project3D(cInfo.cx, cInfo.cy, cInfo.cz, cInfo._proj);
+        }
+      });
+    }
+
     function render(now) {
       const frameStart = performance.now();
       try {
@@ -2376,6 +2426,9 @@ void main() {
         }
       }
 
+      // Live Dynamic Cluster Centroid Tracking & 3D Projection (Follows Chunks of Nodes!)
+      updateClusterCentroids();
+
       const useHardwareGL = isWebGLActive && cfg.useWebGL;
 
       if (useHardwareGL) {
@@ -2464,17 +2517,6 @@ void main() {
       // 3. Cluster cages & rings
       const showHulls = chkClusterHullsEl ? chkClusterHullsEl.checked : true;
       if (showHulls) {
-        clusterGroups.forEach(grp => grp.length = 0);
-        for (let i = 0; i < nodes.length; i++) {
-          const n = nodes[i];
-          let grp = clusterGroups.get(n.cluster);
-          if (!grp) {
-            grp = [];
-            clusterGroups.set(n.cluster, grp);
-          }
-          grp.push(n);
-        }
-
         clusterGroups.forEach((cNodes, cName) => {
           if (cNodes.length >= 2) {
             const cInfo = clusterCentroids[cName] || { cx: 0, cy: 0, cz: 0, rad: 150 };
@@ -2916,18 +2958,6 @@ void main() {
       // 4. 3D Cluster Bounding Meshes: clusterHull (TRUE 3D GEOMETRIC CONSTELLATION CAGES)
       const showHulls = chkClusterHullsEl ? chkClusterHullsEl.checked : true;
       if (showHulls) {
-        // Group nodes by cluster (Zero allocations by reusing existing Map and arrays)
-        clusterGroups.forEach(grp => grp.length = 0);
-        for (let i = 0; i < nodes.length; i++) {
-          const n = nodes[i];
-          let grp = clusterGroups.get(n.cluster);
-          if (!grp) {
-            grp = [];
-            clusterGroups.set(n.cluster, grp);
-          }
-          grp.push(n);
-        }
-
         clusterGroups.forEach((cNodes, cName) => {
           if (cNodes.length >= 2) {
             const cInfo = clusterCentroids[cName] || { cx: 0, cy: 0, cz: 0, rad: 150 };
